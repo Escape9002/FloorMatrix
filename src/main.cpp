@@ -1,108 +1,163 @@
+#include <Arduino.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_NeoMatrix.h>
 #include <Adafruit_NeoPixel.h>
+#include <Fonts/TomThumb.h>
+#include <SoftwareSerial.h>
 
-#define PIN 12
-#define MATRIX_WIDTH 32
-#define MATRIX_HEIGHT 8
+// Pin definitions
+#define MATRIX_PIN 12
+#define BT_RX 7
+#define BT_TX 8
 
-Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(MATRIX_WIDTH, MATRIX_HEIGHT, PIN,
-  NEO_MATRIX_BOTTOM     + NEO_MATRIX_LEFT +
+// Create objects
+SoftwareSerial btSerial(BT_RX, BT_TX); // SoftwareSerial for Bluetooth
+Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(
+  32, 8, MATRIX_PIN,
+  NEO_MATRIX_BOTTOM + NEO_MATRIX_RIGHT +
   NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG,
-  NEO_GRB            + NEO_KHZ800);
+  NEO_GRB + NEO_KHZ800);
 
+// Message list
+#define MAX_MESSAGES 10
+String messages[MAX_MESSAGES] = {
+  "Hello World!",
+  "NeoMatrix!",
+  "Nano Rocks!"
+};
+int numMessages = 3;
 
-uint16_t buildRGB565(uint8_t red, uint8_t green, uint8_t blue){
-    uint16_t red_565 = map(red, 0, 255, 0, 31);
-
-    uint16_t green_565 = map(green, 0, 255, 0, 63);
-    
-    uint16_t blue_565 = map(blue, 0, 255, 0, 31);
-
-    return (red_565<<11)|(green_565<<5)|blue_565;
-}
-
-struct Vector2D
-{
-    uint8_t x;
-    uint8_t y;
+uint16_t colors[] = {
+  matrix.Color(255, 0, 0),
+  matrix.Color(0, 255, 0),
+  matrix.Color(0, 0, 255),
+  matrix.Color(255, 255, 0),
+  matrix.Color(0, 255, 255)
 };
 
-struct Particle
-{
-    Vector2D position;
-    Vector2D velocity;
-};
-
-#define NUM_PARTICLES 1
-Particle particles[NUM_PARTICLES];
-Vector2D const_force = {10,10};
-bool matrix[MATRIX_WIDTH][MATRIX_HEIGHT] = {false};
-
-void tick(){
-    for (int i = 0; i < NUM_PARTICLES; i ++){
-        uint8_t newX = particles[i].position.x + particles[i].velocity.x;
-        uint8_t newY = particles[i].position.y + particles[i].velocity.y;
-
-        if(newX < matrix.width() && newX >= 0){
-            particles[i].position.x = newX;
-        }
-
-        if( newY < matrix.height() && newY >= 0){
-            particles[i].position.y = newY;
-        }
-
-        
-
+int currentMessage = 0;
+int16_t scrollX = 0;
+uint32_t scrollTimer = 0;
+const uint16_t scrollSpeed = 50; // ms per scroll step
+void sendATCommand(const char* cmd) {
+    btSerial.print(cmd); // No println! Only raw command
+    delay(300);          // Give time for HM-10 to reply
+    while (btSerial.available()) {
+      String response = btSerial.readStringUntil('\n');
+      Serial.println("HM-10 Response: " + response);
     }
-}
-
-void render(){
-    matrix.clear();
-    for (int i = 0; i < NUM_PARTICLES; i ++){
-        matrix.drawPixel(particles[i].position.x,particles[i].position.y,buildRGB565(0,0,255));
-        Serial.print(particles[i].position.x);
-        Serial.print("\t");
-        Serial.println(particles[i].position.y);
-    }
-    matrix.show();
-}
-
-  
-
-void setup()
-{
-  
-
-  Serial.begin(9600);
-    matrix.begin();
-  matrix.setTextWrap(false);
-  matrix.setBrightness(20);
-  matrix.fillScreen(0);
-
-  
-  for (int i = 0; i < NUM_PARTICLES; i ++){
-    particles[i].position ={0,0};
-    particles[i].velocity = {1,0};
-    
   }
-
-}
-
-int blue = 0;
-void loop()
-{
-
-tick();
-render();
-delay(150);
-    // matrix.clear();
-          
-    // matrix.drawPixel(15,0,buildRGB565(100,100,100));
-    // matrix.drawPixel(20,4,buildRGB565(0,255,0));
-    // matrix.drawPixel(30,3,buildRGB565(0,0,255));
-
-    // matrix.show();
+  void configureBluetooth() {
+    Serial.println("Configuring Bluetooth...");
+    delay(1000); // Allow HM-10 boot time
+  
+    sendATCommand("AT");        // Test communication
+    sendATCommand("AT+RESET");  // Soft reset
+    sendATCommand("AT+NAMENeoMatrix"); // Set device name
+    sendATCommand("AT+BAUD0");  // Set baud rate to 9600
+    sendATCommand("AT+ROLE0");  // Set to slave role
+  }
+  
+  
+  
+  // Process Bluetooth command
+  void processCommand(String cmd) {
+    Serial.println("Received command: " + cmd);
+    cmd.trim();
 
   
+    if (cmd.startsWith("ADD:")) {
+      if (numMessages < MAX_MESSAGES) {
+        messages[numMessages] = cmd.substring(4);
+        numMessages++;
+        btSerial.println("Added!");
+      } else {
+        btSerial.println("Message list full!");
+      }
+    } else if (cmd.startsWith("DEL:")) {
+      int idx = cmd.substring(4).toInt();
+      if (idx >= 0 && idx < numMessages) {
+        for (int i = idx; i < numMessages - 1; i++) {
+          messages[i] = messages[i + 1];
+        }
+        numMessages--;
+        btSerial.println("Deleted!");
+      } else {
+        btSerial.println("Invalid index!");
+      }
+    } else if (cmd.equalsIgnoreCase("LIST")) {
+      btSerial.println("Messages:");
+      for (int i = 0; i < numMessages; i++) {
+        btSerial.print(i);
+        btSerial.print(": ");
+        btSerial.println(messages[i]);
+      }
+    } else {
+      btSerial.println("Unknown command.");
+    }
+  }
+  
+  // Handle incoming Bluetooth commands
+  void handleBluetooth() {
+    if (btSerial.available()) {
+      String inputBuffer = btSerial.readStringUntil('\n');
+      inputBuffer.trim();  // Removes \r or spaces if any
+  
+      if (inputBuffer.length() > 0) {
+        Serial.println("Received: " + inputBuffer);
+        processCommand(inputBuffer);
+      }
+    }
+  }
+  
+
+// Update the matrix display
+void updateDisplay() {
+  uint32_t now = millis();
+
+  if (now - scrollTimer > scrollSpeed) {
+    scrollTimer = now;
+
+    matrix.fillScreen(0);
+    matrix.setCursor(scrollX, matrix.height() - 1); // Bottom alignment for TomThumb
+    matrix.print(messages[currentMessage]);
+    matrix.show();
+
+    scrollX--;
+
+    int16_t textWidth = messages[currentMessage].length() * 4; // TomThumb is ~4px per char
+    if (scrollX < -textWidth) {
+      scrollX = matrix.width();
+      currentMessage++;
+      if (currentMessage >= numMessages) {
+        currentMessage = 0;
+      }
+      matrix.setTextColor(colors[random(0, 5)]);
+    }
+  }
 }
+
+
+
+// Setup
+void setup() {
+    Serial.begin(9600);
+    btSerial.begin(9600);
+  
+    configureBluetooth(); // Configure HM-10 at boot
+  
+    matrix.begin();
+    matrix.setFont(&TomThumb);
+    matrix.setTextWrap(false);
+    matrix.setBrightness(40);
+    matrix.setTextColor(colors[0]);
+  
+    Serial.println("Setup done.");
+  }
+  
+  // Main loop
+  void loop() {
+    handleBluetooth();
+    updateDisplay();
+  }
+  
