@@ -41,12 +41,13 @@ uint32_t scrollTimer = 0;
 const uint16_t scrollSpeed = 50; // ms per scroll step
 void sendATCommand(const char* cmd) {
     btSerial.print(cmd); // No println! Only raw command
-    delay(300);          // Give time for HM-10 to reply
+    delay(100);          // Give time for HM-10 to reply
     while (btSerial.available()) {
       String response = btSerial.readStringUntil('\n');
       Serial.println("HM-10 Response: " + response);
     }
   }
+
   void configureBluetooth() {
     Serial.println("Configuring Bluetooth...");
     delay(1000); // Allow HM-10 boot time
@@ -54,7 +55,7 @@ void sendATCommand(const char* cmd) {
     sendATCommand("AT");        // Test communication
     sendATCommand("AT+RESET");  // Soft reset
     sendATCommand("AT+NAMENeoMatrix"); // Set device name
-    sendATCommand("AT+BAUD0");  // Set baud rate to 9600
+    sendATCommand("AT+BAUD1");  // Set baud rate to 9600
     sendATCommand("AT+ROLE0");  // Set to slave role
   }
   
@@ -97,18 +98,27 @@ void sendATCommand(const char* cmd) {
     }
   }
   
-  // Handle incoming Bluetooth commands
-  void handleBluetooth() {
-    if (btSerial.available()) {
-      String inputBuffer = btSerial.readStringUntil('\n');
-      inputBuffer.trim();  // Removes \r or spaces if any
+  String inputBuffer = "";
+  unsigned long lastCharTime = 0;
+  const unsigned long charTimeout = 5; // ms
   
-      if (inputBuffer.length() > 0) {
-        Serial.println("Received: " + inputBuffer);
-        processCommand(inputBuffer);
-      }
-    }
-  }
+void handleBluetooth() {
+while (btSerial.available()) {
+    char c = btSerial.read();
+    inputBuffer += c;
+    lastCharTime = millis();
+}
+
+// If data hasn't arrived for a while, assume end of message
+if (inputBuffer.length() > 0 && (millis() - lastCharTime > charTimeout)) {
+    inputBuffer.trim();  // Remove whitespace
+    Serial.println("Received: " + inputBuffer);
+    processCommand(inputBuffer);
+    inputBuffer = ""; // Reset for next command
+}
+}
+  
+  
   
 
 // Update the matrix display
@@ -142,7 +152,7 @@ void updateDisplay() {
 // Setup
 void setup() {
     Serial.begin(9600);
-    btSerial.begin(9600);
+    btSerial.begin(19200);
   
     configureBluetooth(); // Configure HM-10 at boot
   
