@@ -5,127 +5,183 @@
 #include <Fonts/TomThumb.h>
 #include <SoftwareSerial.h>
 
+// #define DEBUG 1
+#if DEBUG
+#define DEBUG_PRINTLN(x) Serial.println(x)
+#define DEBUG_PRINT(x) Serial.print(x)
+#else
+#define DEBUG_PRINTLN(x)
+#define DEBUG_PRINT(x)
+#endif
+
+#include "BLEDriver.h"
+BLEInterface *ble_driver = nullptr;
+
 // Pin definitions
 #define MATRIX_PIN 12
-#define BT_RX 7
-#define BT_TX 8
 
 // Create objects
-SoftwareSerial btSerial(BT_RX, BT_TX); // SoftwareSerial for Bluetooth
 Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(
-  32, 8, MATRIX_PIN,
-  NEO_MATRIX_BOTTOM + NEO_MATRIX_RIGHT +
-  NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG,
-  NEO_GRB + NEO_KHZ800);
+    32, 8, MATRIX_PIN,
+    NEO_MATRIX_BOTTOM + NEO_MATRIX_RIGHT +
+        NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG,
+    NEO_GRB + NEO_KHZ800);
 
 // Message list
 #define MAX_MESSAGES 10
 String messages[MAX_MESSAGES] = {
-  "Hello World!",
-  "NeoMatrix!",
-  "Nano Rocks!"
-};
+    "Hello World!",
+    "NeoMatrix!",
+    "Nano Rocks!"};
 int numMessages = 3;
 
 uint16_t colors[] = {
-  matrix.Color(255, 0, 0),
-  matrix.Color(0, 255, 0),
-  matrix.Color(0, 0, 255),
-  matrix.Color(255, 255, 0),
-  matrix.Color(0, 255, 255)
-};
+    matrix.Color(255, 0, 0),
+    matrix.Color(0, 255, 0),
+    matrix.Color(0, 0, 255),
+    matrix.Color(255, 255, 0),
+    matrix.Color(0, 255, 255)};
 
 int currentMessage = 0;
 int16_t scrollX = 0;
 uint32_t scrollTimer = 0;
 const uint16_t scrollSpeed = 50; // ms per scroll step
-void sendATCommand(const char* cmd) {
-    btSerial.print(cmd); // No println! Only raw command
-    delay(100);          // Give time for HM-10 to reply
-    while (btSerial.available()) {
-      String response = btSerial.readStringUntil('\n');
-      Serial.println("HM-10 Response: " + response);
+
+struct Pixel{
+  uint8_t x;
+  uint8_t y;
+  uint8_t z;
+  uint8_t r;
+  uint8_t g;
+  uint8_t b;
+};
+
+enum MATRIX_MODES {
+  PIXEL,
+  MESSAGES
+};
+
+MATRIX_MODES matrix_mode = MESSAGES;
+
+// Process Bluetooth command
+void processCommand(String cmd)
+{
+  DEBUG_PRINTLN("Received command: " + cmd);
+  cmd.trim();
+  String msg = "";
+  matrix_mode = MESSAGES;
+
+  if(cmd.startsWith("p:")){
+
+    /**
+     * Packet format should be in csv format:
+     * p:x,y,z,r,g,b
+     */
+
+matrix_mode = PIXEL;
+
+    Pixel p;
+
+    DEBUG_PRINTLN(cmd);
+
+    cmd = cmd.substring(2, cmd.length());
+    DEBUG_PRINTLN(cmd);
+
+    p.x = (uint8_t) cmd.substring(0, cmd.indexOf(",")).toInt();
+    cmd = cmd.substring(cmd.indexOf(",")+1);
+      DEBUG_PRINTLN(cmd);
+
+    p.y = (uint8_t) cmd.substring(0, cmd.indexOf(",")).toInt();
+    cmd = cmd.substring(cmd.indexOf(",")+1);
+        DEBUG_PRINTLN(cmd);
+    
+        p.z = (uint8_t) cmd.substring(0, cmd.indexOf(",")).toInt();
+    cmd = cmd.substring(cmd.indexOf(",")+1);
+        DEBUG_PRINTLN(cmd);
+    
+        p.r = (uint8_t) cmd.substring(0, cmd.indexOf(",")).toInt();
+    cmd = cmd.substring(cmd.indexOf(",")+1);
+        DEBUG_PRINTLN(cmd);
+    
+        p.g = (uint8_t) cmd.substring(0, cmd.indexOf(",")).toInt();
+    cmd = cmd.substring(cmd.indexOf(",")+1);
+        DEBUG_PRINTLN(cmd);
+    
+        p.b = (uint8_t) cmd.substring(0, cmd.indexOf(",")).toInt();
+    cmd = cmd.substring(cmd.indexOf(",")+1);
+        DEBUG_PRINTLN(cmd);
+
+        DEBUG_PRINTLN("assambled:" );
+        DEBUG_PRINT(p.x); DEBUG_PRINT(",");
+        DEBUG_PRINT(p.y); DEBUG_PRINT(",");
+        DEBUG_PRINT(p.r); DEBUG_PRINT(",");
+        DEBUG_PRINT(p.g); DEBUG_PRINT(",");
+        DEBUG_PRINT(p.b); DEBUG_PRINT(",");
+
+
+        matrix.drawPixel(p.x, p.y, matrix.Color(p.r, p.g, p.b));
+        matrix.show();
+        msg ="Pixel";
+    
+  }
+  else if(cmd.startsWith("CLEAR")){
+    matrix.clear();
+    matrix.show();
+  }
+  else if (cmd.startsWith("ADD:"))
+  {
+    if (numMessages < MAX_MESSAGES)
+    {
+      messages[numMessages] = cmd.substring(4);
+      numMessages++;
+      msg = "Added!";
+    }
+    else
+    {
+      msg = "Message list full!";
     }
   }
-
-  void configureBluetooth() {
-    Serial.println("Configuring Bluetooth...");
-    delay(1000); // Allow HM-10 boot time
-  
-    sendATCommand("AT");        // Test communication
-    sendATCommand("AT+RESET");  // Soft reset
-    sendATCommand("AT+NAMENeoMatrix"); // Set device name
-    sendATCommand("AT+BAUD1");  // Set baud rate to 9600
-    sendATCommand("AT+ROLE0");  // Set to slave role
-  }
-  
-  
-  
-  // Process Bluetooth command
-  void processCommand(String cmd) {
-    Serial.println("Received command: " + cmd);
-    cmd.trim();
-
-  
-    if (cmd.startsWith("ADD:")) {
-      if (numMessages < MAX_MESSAGES) {
-        messages[numMessages] = cmd.substring(4);
-        numMessages++;
-        btSerial.println("Added!");
-      } else {
-        btSerial.println("Message list full!");
+  else if (cmd.startsWith("DEL:"))
+  {
+    int idx = cmd.substring(4).toInt();
+    if (idx >= 0 && idx < numMessages)
+    {
+      for (int i = idx; i < numMessages - 1; i++)
+      {
+        messages[i] = messages[i + 1];
       }
-    } else if (cmd.startsWith("DEL:")) {
-      int idx = cmd.substring(4).toInt();
-      if (idx >= 0 && idx < numMessages) {
-        for (int i = idx; i < numMessages - 1; i++) {
-          messages[i] = messages[i + 1];
-        }
-        numMessages--;
-        btSerial.println("Deleted!");
-      } else {
-        btSerial.println("Invalid index!");
-      }
-    } else if (cmd.equalsIgnoreCase("LIST")) {
-      btSerial.println("Messages:");
-      for (int i = 0; i < numMessages; i++) {
-        btSerial.print(i);
-        btSerial.print(": ");
-        btSerial.println(messages[i]);
-      }
-    } else {
-      btSerial.println("Unknown command.");
+      numMessages--;
+      msg = "Deleted!";
+    }
+    else
+    {
+      msg = "Invalid index!";
     }
   }
-  
-  String inputBuffer = "";
-  unsigned long lastCharTime = 0;
-  const unsigned long charTimeout = 5; // ms
-  
-void handleBluetooth() {
-while (btSerial.available()) {
-    char c = btSerial.read();
-    inputBuffer += c;
-    lastCharTime = millis();
-}
+  else if (cmd.equalsIgnoreCase("LIST"))
+  {
+    msg = "Messages:";
+    for (int i = 0; i < numMessages; i++)
+    {
 
-// If data hasn't arrived for a while, assume end of message
-if (inputBuffer.length() > 0 && (millis() - lastCharTime > charTimeout)) {
-    inputBuffer.trim();  // Remove whitespace
-    Serial.println("Received: " + inputBuffer);
-    processCommand(inputBuffer);
-    inputBuffer = ""; // Reset for next command
+      msg = msg + i + ": " + messages[i];
+    }
+  }
+  else
+  {
+    msg = "Unkown command.";
+  }
+
+  ble_driver->sendDataPacket(msg.c_str(), sizeof(msg.c_str()));
 }
-}
-  
-  
-  
 
 // Update the matrix display
-void updateDisplay() {
+void updateDisplay()
+{
   uint32_t now = millis();
 
-  if (now - scrollTimer > scrollSpeed) {
+  if (now - scrollTimer > scrollSpeed && matrix_mode == MESSAGES)
+  {
     scrollTimer = now;
 
     matrix.fillScreen(0);
@@ -136,10 +192,12 @@ void updateDisplay() {
     scrollX--;
 
     int16_t textWidth = messages[currentMessage].length() * 4; // TomThumb is ~4px per char
-    if (scrollX < -textWidth) {
+    if (scrollX < -textWidth)
+    {
       scrollX = matrix.width();
       currentMessage++;
-      if (currentMessage >= numMessages) {
+      if (currentMessage >= numMessages)
+      {
         currentMessage = 0;
       }
       matrix.setTextColor(colors[random(0, 5)]);
@@ -147,27 +205,65 @@ void updateDisplay() {
   }
 }
 
-
-
-// Setup
-void setup() {
-    Serial.begin(9600);
-    btSerial.begin(19200);
-  
-    configureBluetooth(); // Configure HM-10 at boot
-  
-    matrix.begin();
-    matrix.setFont(&TomThumb);
-    matrix.setTextWrap(false);
-    matrix.setBrightness(40);
-    matrix.setTextColor(colors[0]);
-  
-    Serial.println("Setup done.");
+void setup()
+{
+  Serial.begin(115200);
+  while (!Serial)
+  {
   }
+
+  DEBUG_PRINTLN("Starting setup ...");
+
+  DEBUG_PRINTLN("\tmatrix setup...");
+  matrix.begin();
+  matrix.setFont(&TomThumb);
+  matrix.setTextWrap(false);
+  matrix.setBrightness(70);
+  matrix.setTextColor(colors[0]);
+  matrix.clear();
+  matrix.show();
+
+  matrix.print("Booting...");
+  matrix.show();
   
-  // Main loop
-  void loop() {
-    handleBluetooth();
-    updateDisplay();
+
+  DEBUG_PRINTLN("\tBLE setup...");
+  ble_driver = &getBLEDriverInstance();
+  while (!ble_driver->begin())
+  {
+    DEBUG_PRINTLN("\t\tcouldnt connect to BLE");
+    delay(50);
   }
+
+  DEBUG_PRINTLN("Setup done.");
   
+  matrix.print("Done!");
+  matrix.show();
+  delay(500);
+  matrix.clear();
+  matrix.show();
+}
+
+String msg = "";
+
+void loop()
+{
+  if (ble_driver->connected())
+  {
+    if (ble_driver->available())
+    {
+      msg = msg + ble_driver->get_received();
+      DEBUG_PRINTLN(msg);
+      
+      if (msg.length() > 0 && msg.endsWith(">"))
+      {
+        msg = msg.substring(1, msg.length() - 1);
+        DEBUG_PRINTLN(msg);
+        processCommand(msg);
+
+        msg = "";
+      }
+    }
+  }
+  // updateDisplay();
+}
