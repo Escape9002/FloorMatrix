@@ -44,6 +44,10 @@ bool HM10::begin()
 
     if (!sendATCommand("AT"))
         return false; // Test communication
+    if (!sendATCommand("AT+POWE1"))
+        return false; // Test communication
+    if (!sendATCommand("AT+POWE3"))
+        return false;
     if (!sendATCommand("AT+RESET"))
         return false; // Soft reset
     if (!sendATCommand("AT+NAMENeoMatrix"))
