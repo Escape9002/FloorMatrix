@@ -5,43 +5,32 @@ import random as rn
 SERVICE_UUID = "0000ffe0-0000-1000-8000-00805f9b34fb"
 CHAR_UUID = "0000ffe1-0000-1000-8000-00805f9b34fb"
 TARGET_NAME = "NeoMatrix"  # Change if needed
-import struct
 
+import colorsys
 
-packet_format = "<Iffff"  # timestamp(uint32), q_i(float), q_j(float), q_k(float), q_r(float)
+def generate_rainbow_matrix(width, height):
+    """
+    Generates a rainbow pattern across the x-axis of a matrix.
 
-packet_size = struct.calcsize(packet_format)  # Should be 18 bytes
-import time
+    Args:
+        width (int): Number of columns in the matrix (x-axis).
+        height (int): Number of rows in the matrix (y-axis).
 
-last_packet_time = None
+    Returns:
+        List[List[Tuple[int, int, int]]]: A 2D list of RGB tuples.
+    """
+    matrix = []
 
-def handle_packet(sender: int, data: bytearray):
-    global last_packet_time
+    for y in range(height):
+        row = []
+        for x in range(width):
+            hue = x / width  # Hue varies from 0 to 1 along x-axis
+            r, g, b = colorsys.hsv_to_rgb(hue, 1.0, 1.0)  # Full saturation and value
+            rgb = (int(r * 255), int(g * 255), int(b * 255))
+            row.append(rgb)
+        matrix.append(row)
 
-    # Print raw data length and hex for debugging
-    # print(f"Received {len(data)} bytes: {data.hex()}")
-
-    # Ensure data length matches expected size
-    if len(data) != struct.calcsize(packet_format):
-        print(f"⚠️ Unexpected packet size: {len(data)} bytes")
-        return
-
-    # Unpack the data
-    try:
-        timestamp, q_i, q_j, q_k, q_r = struct.unpack(packet_format, data)
-        print(f"Timestamp: {timestamp}, q_i: {q_i}, q_j: {q_j}, q_k: {q_k}, q_r: {q_r}")
-
-        # Measure reception rate in Hz
-        now = time.time()
-        if last_packet_time is not None:
-            dt = now - last_packet_time
-            if dt > 0:
-                rate_hz = 1.0 / dt
-                # print(f"Reception rate: {rate_hz:.2f} packets/sec")
-        last_packet_time = now
-
-    except Exception as e:
-        print(f"⚠️ Unpacking error: {e}")
+    return matrix
 
 
 # --- Scan and connect ---
@@ -74,15 +63,29 @@ async def main():
 
         print("sending color bits!")
         while(True):
-            for x in range(0, 32):
-                for y in range(0,8):
-                    r,g,b = random_color()
+
+            rainbow_matrix = generate_rainbow_matrix(32,8)
+            for y in range(0,8):
+                for x in range(0,32):
+                    r,g,b = rainbow_matrix[y][x]
+                    
                     msg : str = "<p:" + \
                         str(x) + "," + \
                         str(y) + "," + \
                         str(r) + ","+ \
                         str(g) + ","+ \
                         str(b) + ">" \
+
+
+            # for x in range(0, 32):
+            #     for y in range(0,8):
+            #         r,g,b = random_color()
+            #         msg : str = "<p:" + \
+            #             str(x) + "," + \
+            #             str(y) + "," + \
+            #             str(r) + ","+ \
+            #             str(g) + ","+ \
+            #             str(b) + ">" \
 
 
                     await client.write_gatt_char(CHAR_UUID, msg.encode())

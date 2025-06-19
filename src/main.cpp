@@ -9,9 +9,11 @@
 #if DEBUG
 #define DEBUG_PRINTLN(x) Serial.println(x)
 #define DEBUG_PRINT(x) Serial.print(x)
+#define DEBUG_BEGIN(x) Serial.begin(x)
 #else
 #define DEBUG_PRINTLN(x)
 #define DEBUG_PRINT(x)
+#define DEBUG_BEGIN(x)
 #endif
 
 #include "BLEDriver.h"
@@ -207,10 +209,10 @@ void updateDisplay()
 
 void setup()
 {
-  Serial.begin(115200);
-  while (!Serial)
-  {
-  }
+  DEBUG_BEGIN(115200);
+  // while (!Serial)
+  // {
+  // }
 
   DEBUG_PRINTLN("Starting setup ...");
 
@@ -218,7 +220,7 @@ void setup()
   matrix.begin();
   matrix.setFont(&TomThumb);
   matrix.setTextWrap(false);
-  matrix.setBrightness(70);
+  matrix.setBrightness(25);
   matrix.setTextColor(colors[0]);
   matrix.clear();
   matrix.show();
