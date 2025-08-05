@@ -49,7 +49,8 @@ int16_t scrollX = 0;
 uint32_t scrollTimer = 0;
 const uint16_t scrollSpeed = 50; // ms per scroll step
 
-struct Pixel{
+struct Pixel
+{
   uint8_t x;
   uint8_t y;
   uint8_t z;
@@ -58,10 +59,18 @@ struct Pixel{
   uint8_t b;
 };
 
-enum MATRIX_MODES {
+enum MATRIX_MODES
+{
   PIXEL,
   MESSAGES
 };
+
+enum FONT_MODES
+{
+  SMALL,
+  BIG
+};
+FONT_MODES font_mode = SMALL;
 
 MATRIX_MODES matrix_mode = MESSAGES;
 
@@ -71,16 +80,16 @@ void processCommand(String cmd)
   DEBUG_PRINTLN("Received command: " + cmd);
   cmd.trim();
   String msg = "";
-  matrix_mode = MESSAGES;
 
-  if(cmd.startsWith("p:")){
+  if (cmd.startsWith("p:"))
+  {
 
     /**
      * Packet format should be in csv format:
      * p:x,y,z,r,g,b
      */
 
-matrix_mode = PIXEL;
+    matrix_mode = PIXEL;
 
     Pixel p;
 
@@ -89,44 +98,48 @@ matrix_mode = PIXEL;
     cmd = cmd.substring(2, cmd.length());
     DEBUG_PRINTLN(cmd);
 
-    p.x = (uint8_t) cmd.substring(0, cmd.indexOf(",")).toInt();
-    cmd = cmd.substring(cmd.indexOf(",")+1);
-      DEBUG_PRINTLN(cmd);
+    p.x = (uint8_t)cmd.substring(0, cmd.indexOf(",")).toInt();
+    cmd = cmd.substring(cmd.indexOf(",") + 1);
+    DEBUG_PRINTLN(cmd);
 
-    p.y = (uint8_t) cmd.substring(0, cmd.indexOf(",")).toInt();
-    cmd = cmd.substring(cmd.indexOf(",")+1);
-        DEBUG_PRINTLN(cmd);
-    
-        p.z = (uint8_t) cmd.substring(0, cmd.indexOf(",")).toInt();
-    cmd = cmd.substring(cmd.indexOf(",")+1);
-        DEBUG_PRINTLN(cmd);
-    
-        p.r = (uint8_t) cmd.substring(0, cmd.indexOf(",")).toInt();
-    cmd = cmd.substring(cmd.indexOf(",")+1);
-        DEBUG_PRINTLN(cmd);
-    
-        p.g = (uint8_t) cmd.substring(0, cmd.indexOf(",")).toInt();
-    cmd = cmd.substring(cmd.indexOf(",")+1);
-        DEBUG_PRINTLN(cmd);
-    
-        p.b = (uint8_t) cmd.substring(0, cmd.indexOf(",")).toInt();
-    cmd = cmd.substring(cmd.indexOf(",")+1);
-        DEBUG_PRINTLN(cmd);
+    p.y = (uint8_t)cmd.substring(0, cmd.indexOf(",")).toInt();
+    cmd = cmd.substring(cmd.indexOf(",") + 1);
+    DEBUG_PRINTLN(cmd);
 
-        DEBUG_PRINTLN("assambled:" );
-        DEBUG_PRINT(p.x); DEBUG_PRINT(",");
-        DEBUG_PRINT(p.y); DEBUG_PRINT(",");
-        DEBUG_PRINT(p.r); DEBUG_PRINT(",");
-        DEBUG_PRINT(p.g); DEBUG_PRINT(",");
-        DEBUG_PRINT(p.b); DEBUG_PRINT(",");
+    p.z = (uint8_t)cmd.substring(0, cmd.indexOf(",")).toInt();
+    cmd = cmd.substring(cmd.indexOf(",") + 1);
+    DEBUG_PRINTLN(cmd);
 
+    p.r = (uint8_t)cmd.substring(0, cmd.indexOf(",")).toInt();
+    cmd = cmd.substring(cmd.indexOf(",") + 1);
+    DEBUG_PRINTLN(cmd);
 
-        matrix.drawPixel(p.x, p.y, matrix.Color(p.r, p.g, p.b));
-        matrix.show();
-        msg ="Pixel";
-    
+    p.g = (uint8_t)cmd.substring(0, cmd.indexOf(",")).toInt();
+    cmd = cmd.substring(cmd.indexOf(",") + 1);
+    DEBUG_PRINTLN(cmd);
+
+    p.b = (uint8_t)cmd.substring(0, cmd.indexOf(",")).toInt();
+    cmd = cmd.substring(cmd.indexOf(",") + 1);
+    DEBUG_PRINTLN(cmd);
+
+    DEBUG_PRINTLN("assambled:");
+    DEBUG_PRINT(p.x);
+    DEBUG_PRINT(",");
+    DEBUG_PRINT(p.y);
+    DEBUG_PRINT(",");
+    DEBUG_PRINT(p.r);
+    DEBUG_PRINT(",");
+    DEBUG_PRINT(p.g);
+    DEBUG_PRINT(",");
+    DEBUG_PRINT(p.b);
+    DEBUG_PRINT(",");
+
+    matrix.drawPixel(p.x, p.y, matrix.Color(p.r, p.g, p.b));
+    matrix.show();
+    msg = "Pixel";
   }
-  else if(cmd.startsWith("CLEAR")){
+  else if (cmd.startsWith("CLEAR"))
+  {
     matrix.clear();
     matrix.show();
   }
@@ -142,6 +155,7 @@ matrix_mode = PIXEL;
     {
       msg = "Message list full!";
     }
+    matrix_mode = MESSAGES;
   }
   else if (cmd.startsWith("DEL:"))
   {
@@ -159,6 +173,7 @@ matrix_mode = PIXEL;
     {
       msg = "Invalid index!";
     }
+    matrix_mode = MESSAGES;
   }
   else if (cmd.equalsIgnoreCase("LIST"))
   {
@@ -168,6 +183,16 @@ matrix_mode = PIXEL;
 
       msg = msg + i + ": " + messages[i];
     }
+  }
+  else if (cmd.startsWith("FONT_SMALL"))
+  {
+    matrix.setFont(&TomThumb);
+    font_mode = SMALL;
+  }
+  else if (cmd.startsWith("FONT_BIG"))
+  {
+    matrix.setFont(nullptr);
+    font_mode = BIG;
   }
   else
   {
@@ -187,13 +212,28 @@ void updateDisplay()
     scrollTimer = now;
 
     matrix.fillScreen(0);
-    matrix.setCursor(scrollX, matrix.height() - 1); // Bottom alignment for TomThumb
+    int16_t textWidth = 0;
+    switch (font_mode)
+    {
+    case BIG:
+      matrix.setCursor(scrollX, 0);                      // Bottom alignment for TomThumb
+      textWidth = messages[currentMessage].length() * 6; // TomThumb is ~4px per char
+      break;
+    case SMALL:
+      matrix.setCursor(scrollX, matrix.height() - 1);    // Bottom alignment for TomThumb
+      textWidth = messages[currentMessage].length() * 4; // TomThumb is ~4px per char
+      break;
+    default:
+      matrix.setCursor(scrollX, matrix.height() - 1);    // Bottom alignment for TomThumb
+      textWidth = messages[currentMessage].length() * 4; // TomThumb is ~4px per char
+      break;
+    }
+
     matrix.print(messages[currentMessage]);
     matrix.show();
 
     scrollX--;
 
-    int16_t textWidth = messages[currentMessage].length() * 4; // TomThumb is ~4px per char
     if (scrollX < -textWidth)
     {
       scrollX = matrix.width();
@@ -227,7 +267,6 @@ void setup()
 
   matrix.print("Booting...");
   matrix.show();
-  
 
   DEBUG_PRINTLN("\tBLE setup...");
   ble_driver = &getBLEDriverInstance();
@@ -238,7 +277,7 @@ void setup()
   }
 
   DEBUG_PRINTLN("Setup done.");
-  
+
   matrix.print("Done!");
   matrix.show();
   delay(500);
@@ -256,7 +295,7 @@ void loop()
     {
       msg = msg + ble_driver->get_received();
       DEBUG_PRINTLN(msg);
-      
+
       if (msg.length() > 0 && msg.endsWith(">"))
       {
         msg = msg.substring(1, msg.length() - 1);
@@ -267,5 +306,5 @@ void loop()
       }
     }
   }
-  // updateDisplay();
+  updateDisplay();
 }

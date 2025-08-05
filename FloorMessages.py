@@ -36,6 +36,7 @@ def generate_rainbow_matrix(width, height):
 # --- Scan and connect ---
 async def main():
     print("🔍 Scanning for devices...")
+    # You can provide a service UUID to discover to speed up scanning
     devices = await BleakScanner.discover(timeout=10)
     target = None
 
@@ -46,48 +47,33 @@ async def main():
             break
 
     if not target:
-        print("❌ Could not find HM-10 device.")
+        print(f"❌ Could not find a device named {TARGET_NAME}.")
         return
 
-    print(f"✅ Found HM-10 device: {target.name} [{target.address}]")
+    print(f"✅ Found device: {target.name} [{target.address}]")
 
     async with BleakClient(target.address) as client:
+        if not client.is_connected:
+            print(f"❌ Failed to connect to {target.address}")
+            return
+            
         print(f"🔗 Connected to {target.address}")
 
-        services = await client.get_services()
         print("📡 Available services:")
-        for service in services:
+        for service in client.services:
             print(f"- {service.uuid}")
             for char in service.characteristics:
                 print(f"  - Characteristic: {char.uuid}")
 
         print("sending color bits!")
-        while(True):
-
-            rainbow_matrix = generate_rainbow_matrix(32,8)
-            for y in range(0,8):
-                for x in range(0,32):
-                    r,g,b = rainbow_matrix[y][x]
+        while True:
+            rainbow_matrix = generate_rainbow_matrix(32, 8)
+            for y in range(8):
+                for x in range(32):
+                    r, g, b = rainbow_matrix[y][x]
                     
-                    msg : str = "<p:" + \
-                        str(x) + "," + \
-                        str(y) + "," + \
-                        str(r) + ","+ \
-                        str(g) + ","+ \
-                        str(b) + ">" \
-
-
-            # for x in range(0, 32):
-            #     for y in range(0,8):
-            #         r,g,b = random_color()
-            #         msg : str = "<p:" + \
-            #             str(x) + "," + \
-            #             str(y) + "," + \
-            #             str(r) + ","+ \
-            #             str(g) + ","+ \
-            #             str(b) + ">" \
-
-
+                    msg: str = f"<p:{x},{y},{0},{r},{g},{b}>"
+                    
                     await client.write_gatt_char(CHAR_UUID, msg.encode())
  
 def random_color():
