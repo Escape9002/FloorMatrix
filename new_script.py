@@ -62,7 +62,7 @@ async def send_time(client: BleakClient):
     print(f"✉️  Sending message: {message}")
     
 
-    await client.write_gatt_char(CHAR_UUID, "<CLEAR>".encode(), response=True)
+    
     for i in range(5):
         await client.write_gatt_char(CHAR_UUID, "<DEL:0>".encode(), response=True)
         await client.write_gatt_char(CHAR_UUID, "<DEL:1>".encode(), response=True)
@@ -82,7 +82,7 @@ async def send_kindness(client: BleakClient):
     print("🕒 Getting some sentences...")
  
     
-    await client.write_gatt_char(CHAR_UUID, "<CLEAR>".encode(), response=True)
+    
     for i in range(5):
         await client.write_gatt_char(CHAR_UUID, "<DEL:0>".encode(), response=True)
         await client.write_gatt_char(CHAR_UUID, "<DEL:1>".encode(), response=True)
@@ -91,7 +91,7 @@ async def send_kindness(client: BleakClient):
     
     # Construct the message according to the protocol in your C++ code.
     # The command is "ADD:<text>", and the packet is wrapped in "<>".
-    words = ["UwU", "Time flies like my laptop", "^-^ CHAOS ^-^"]
+    words = ["UwU", "=<O.o>=", "^-^ CHAOS  ^-^"]
 
     for sentence in words:
         message = f"<ADD:{sentence}>"
@@ -131,6 +131,7 @@ async def main(args):
             await send_kindness(client)
 
 if __name__ == "__main__":
+    
     # Set up command-line argument parsing
     parser = argparse.ArgumentParser(description="Send data to a NeoMatrix display over BLE.")
     parser.add_argument(
@@ -140,9 +141,11 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    try:
-        asyncio.run(main(args))
-    except KeyboardInterrupt:
-        print("\n👋 Exiting.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
+    while True:
+        try:
+            asyncio.run(main(args))
+        except KeyboardInterrupt:
+            print("\n👋 Exiting.\n Type stop to truly stop!")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            print("To continue like nothing happened, press enter")
