@@ -3,3 +3,4 @@
 *_venv/
 __pycache__/
 *.lock
+dist/
