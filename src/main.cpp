@@ -61,7 +61,6 @@ struct Pixel
   uint8_t b;
 };
 
-
 enum MATRIX_MODES
 {
   PIXEL,
@@ -205,7 +204,6 @@ void processCommand(String cmd)
   ble_driver->sendDataPacket(msg.c_str(), sizeof(msg.c_str()));
 }
 
-
 // Update the matrix display
 void updateDisplay()
 {
@@ -291,7 +289,7 @@ void setup()
 
 String msg = "";
 unsigned long last_ping = 0;
-unsigned long wait_time = 5*60*1000;
+unsigned long wait_time = 5 * 60 * 1000;
 void loop()
 {
   if (ble_driver->connected())
@@ -311,16 +309,14 @@ void loop()
       }
 
       last_ping = millis();
-
-    }else {
-      if ((millis() - last_ping) > wait_time){
-        String clear = "<CLEAR>";
-        processCommand(clear);
-      }
     }
-
-
-
   }
   updateDisplay();
+
+  if ((millis() - last_ping) > wait_time)
+  {
+    String clear = "<CLEAR>";
+    last_ping = millis();
+    processCommand(clear);
+  }
 }
