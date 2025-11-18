@@ -15,3 +15,9 @@ So a complete package would be:
 
 ### Clearing the display:
 ```<CLEAR>```
+
+
+# Poetry
+To run this project, you need these commands:
+```poetry install```
+```poetry run floormatrix rainbow```

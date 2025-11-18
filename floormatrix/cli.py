@@ -130,8 +130,7 @@ async def main(args):
         elif args.mode == "kind":
             await send_kindness(client)
 
-if __name__ == "__main__":
-    
+def main_entry():
     # Set up command-line argument parsing
     parser = argparse.ArgumentParser(description="Send data to a NeoMatrix display over BLE.")
     parser.add_argument(
@@ -149,3 +148,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"An error occurred: {e}")
             print("To continue like nothing happened, press enter")
+
+if __name__ == "__main__":
+    main_entry()
+    

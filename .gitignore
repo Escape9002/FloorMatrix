@@ -1,3 +1,5 @@
 .pio/
 .vscode/
 *_venv/
+__pycache__/
+*.lock
