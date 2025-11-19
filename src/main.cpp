@@ -7,8 +7,8 @@
 
 // #include "state_machine.cpp"
 
-// #define DEBUG 1
-#if DEBUG
+#define DEBUG 1
+#if DEBUG 
 #define DEBUG_PRINTLN(x) Serial.println(x)
 #define DEBUG_PRINT(x) Serial.print(x)
 #define DEBUG_BEGIN(x) Serial.begin(x)
@@ -64,7 +64,8 @@ struct Pixel
 enum MATRIX_MODES
 {
   PIXEL,
-  MESSAGES
+  MESSAGES,
+  IDLE
 };
 
 enum FONT_MODES
@@ -144,6 +145,7 @@ void processCommand(String cmd)
   {
     matrix.clear();
     matrix.show();
+    matrix_mode = IDLE;
   }
   else if (cmd.startsWith("ADD:"))
   {
@@ -289,7 +291,7 @@ void setup()
 
 String msg = "";
 unsigned long last_ping = 0;
-unsigned long wait_time = 5 * 60 * 1000;
+constexpr unsigned long wait_time = 3 * 60 * 1000;
 void loop()
 {
   if (ble_driver->connected())
@@ -311,12 +313,18 @@ void loop()
       last_ping = millis();
     }
   }
-  updateDisplay();
 
   if ((millis() - last_ping) > wait_time)
   {
-    String clear = "<CLEAR>";
-    last_ping = millis();
-    processCommand(clear);
+    if (matrix_mode != IDLE){
+      String clear = "CLEAR";
+      processCommand(clear);
+    }else {
+      delay(1000);
+    }
+  }
+  else
+  {
+    updateDisplay();
   }
 }
