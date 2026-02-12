@@ -1,6 +1,6 @@
 from bleak import BleakClient
 from datetime import datetime
-
+import asyncio
 
 async def send_time(client: BleakClient, CHAR_UUID : str):
     """
@@ -20,12 +20,19 @@ async def send_time(client: BleakClient, CHAR_UUID : str):
     
     for i in range(5):
         await client.write_gatt_char(CHAR_UUID, "<DEL:0>".encode(), response=True)
+        await asyncio.sleep(0.02)  # 20 ms
         await client.write_gatt_char(CHAR_UUID, "<DEL:1>".encode(), response=True)
+        await asyncio.sleep(0.02)  # 20 ms
         await client.write_gatt_char(CHAR_UUID, "<DEL:2>".encode(), response=True)
+        await asyncio.sleep(0.02)  # 20 ms
         await client.write_gatt_char(CHAR_UUID, "<FONT_BIG>".encode(), response=True)
+        await asyncio.sleep(0.02)  # 20 ms
+
     
 
     # Use "Write with Response" for commands to ensure they are processed.
-    await client.write_gatt_char(CHAR_UUID, message.encode(), response=True)
+    for i in range(5):
+        await client.write_gatt_char(CHAR_UUID, message.encode(), response=True)
+        await asyncio.sleep(0.02)  # 20 ms
     
     print("✅ Time message sent successfully.")

@@ -59,7 +59,7 @@ def main_entry():
         except KeyboardInterrupt:
             print("\n👋 Exiting.\n Type stop to truly stop!")
         except Exception as e:
-            print(f"An error occurred: {e.with_traceback}")
+            print(f"An error occurred: {type(e)}, {e}")
             print("To continue like nothing happened, press enter")
 
 if __name__ == "__main__":

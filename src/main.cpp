@@ -7,7 +7,7 @@
 
 // #include "state_machine.cpp"
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG 
 #define DEBUG_PRINTLN(x) Serial.println(x)
 #define DEBUG_PRINT(x) Serial.print(x)
@@ -80,7 +80,8 @@ MATRIX_MODES matrix_mode = MESSAGES;
 // Process Bluetooth command
 void processCommand(String cmd)
 {
-  DEBUG_PRINTLN("Received command: " + cmd);
+  String debug_msg = "Received command: " + cmd;
+  DEBUG_PRINTLN(debug_msg);
   cmd.trim();
   String msg = "";
 
@@ -91,6 +92,7 @@ void processCommand(String cmd)
      * Packet format should be in csv format:
      * p:x,y,z,r,g,b
      */
+    DEBUG_PRINTLN("p");
 
     matrix_mode = PIXEL;
 
@@ -143,12 +145,15 @@ void processCommand(String cmd)
   }
   else if (cmd.startsWith("CLEAR"))
   {
+
+    DEBUG_PRINTLN("clear");
     matrix.clear();
     matrix.show();
     matrix_mode = IDLE;
   }
   else if (cmd.startsWith("ADD:"))
   {
+    DEBUG_PRINTLN("add");
     if (numMessages < MAX_MESSAGES)
     {
       messages[numMessages] = cmd.substring(4);
@@ -163,6 +168,7 @@ void processCommand(String cmd)
   }
   else if (cmd.startsWith("DEL:"))
   {
+    DEBUG_PRINTLN("del");
     int idx = cmd.substring(4).toInt();
     if (idx >= 0 && idx < numMessages)
     {
@@ -181,6 +187,7 @@ void processCommand(String cmd)
   }
   else if (cmd.equalsIgnoreCase("LIST"))
   {
+    DEBUG_PRINTLN("list");
     msg = "Messages:";
     for (int i = 0; i < numMessages; i++)
     {
@@ -190,11 +197,13 @@ void processCommand(String cmd)
   }
   else if (cmd.startsWith("FONT_SMALL"))
   {
+    DEBUG_PRINTLN("f_small");
     matrix.setFont(&TomThumb);
     font_mode = SMALL;
   }
   else if (cmd.startsWith("FONT_BIG"))
   {
+    DEBUG_PRINTLN("f_big");
     matrix.setFont(nullptr);
     font_mode = BIG;
   }
@@ -300,10 +309,12 @@ void loop()
     {
       msg = msg + ble_driver->get_received();
       DEBUG_PRINTLN(msg);
+      msg.trim();
 
       if (msg.length() > 0 && msg.endsWith(">"))
       {
         msg = msg.substring(1, msg.length() - 1);
+        DEBUG_PRINT("aaa: ");
         DEBUG_PRINTLN(msg);
         processCommand(msg);
 
