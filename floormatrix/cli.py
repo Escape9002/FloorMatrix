@@ -1,6 +1,9 @@
 import asyncio
 from bleak import BleakScanner, BleakClient
 import argparse
+import sys
+from bleak.exc import BleakError
+
 
 from .modes.clock import send_time
 from .modes.happy_messages import send_kindness
@@ -26,24 +29,24 @@ async def main(args):
     async with BleakClient(device.address) as client:
         print(f"🔗 Connected to {device.address}")
 
-        while True:
-            if args.mode == "rainbow":
-                # This mode uses the efficient binary protocol for animations
-                await stream_rainbow(client, CHAR_UUID)
-            elif args.mode == "time":
-                # This mode uses the text-based command protocol for messages
-                while True:
-                    await send_time(client, CHAR_UUID)
-                    await asyncio.sleep(20)
-                    await send_kindness(client, CHAR_UUID)    
-                    await asyncio.sleep(35)
-            elif args.mode == "clear":
-                await send_clear(client, CHAR_UUID)
-                await asyncio.sleep(35)
-
-            elif args.mode == "kind":
-                await send_kindness(client, CHAR_UUID)
+        
+        if args.mode == "rainbow":
+            # This mode uses the efficient binary protocol for animations
+            await stream_rainbow(client, CHAR_UUID)
+        elif args.mode == "time":
+            # This mode uses the text-based command protocol for messages
+            while True:
+                await send_time(client, CHAR_UUID)
                 await asyncio.sleep(20)
+                await send_kindness(client, CHAR_UUID)    
+                await asyncio.sleep(35)
+        elif args.mode == "clear":
+            await send_clear(client, CHAR_UUID)
+            await asyncio.sleep(35)
+
+        elif args.mode == "kind":
+            await send_kindness(client, CHAR_UUID)
+            await asyncio.sleep(20)
 
 def main_entry():
     # Set up command-line argument parsing
@@ -55,14 +58,32 @@ def main_entry():
     )
     args = parser.parse_args()
 
-    
-    try:
-        asyncio.run(main(args))
-    except KeyboardInterrupt:
-        print("\n👋 Exiting.\n Type stop to truly stop!")
-    except Exception as e:
-        print(f"An error occurred: {type(e)}, {e}")
-        print("To continue like nothing happened, press enter")
+    while True:
+        try:
+            asyncio.run(main(args))
+            
+        except KeyboardInterrupt:
+            print("👋 User stopped service.")
+            sys.exit(0) # Clean exit
+            
+        except BleakError as e:
+            # Check if the error message indicates Bluetooth is disabled
+            error_msg = str(e).lower()
+            if "no powered bluetooth adapters found" in error_msg or "adapter not found" in error_msg:
+                print("🛑 Bluetooth is turned OFF. Shutting down service.")
+                sys.exit(0) # Clean exit -> Systemd will NOT restart this
+            else:
+                # Actual Bluetooth error (range, interference), let's retry
+                print(f"⚠️  BLE Error: {e}")
+                print("♻️  Reconnecting in 10s...")
+                import time
+                time.sleep(10)
+                
+        except Exception as e:
+            print(f"❌ Unexpected Error: {e}")
+            print("♻️  Reconnecting in 10s...")
+            import time
+            time.sleep(10)
 
 if __name__ == "__main__":
     main_entry()

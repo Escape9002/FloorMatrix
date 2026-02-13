@@ -391,10 +391,11 @@ void setup()
   delay(500);
   matrix.clear();
   matrix.show();
+  
 }
 
 unsigned long last_ping = 0;
-constexpr unsigned long wait_time = 3 * 60 * 1000;
+constexpr unsigned long wait_time =(unsigned long) 3 * (unsigned long)60 * (unsigned long)1000;
 unsigned long time_delta = 0;
 void loop()
 {
@@ -412,13 +413,16 @@ void loop()
       last_ping = millis();
     }
   }
-
+  DEBUG_PRINT(wait_time - (millis()-last_ping));
+  DEBUG_PRINT("\t");
+  DEBUG_PRINTLN(wait_time );
   if ((millis() - last_ping) > wait_time)
   {
     if (matrix_mode != IDLE)
     {
-      char clear[] = "<0>";
-      processCommand(clear + 1, 1);
+      char clear[] = "0";
+      processCommand(clear, 1);
+      clearMatrix();
       matrix_mode = IDLE;
       DEBUG_PRINTLN("IDLING");
     }
