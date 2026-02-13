@@ -43,34 +43,34 @@ bool HM10::begin()
 
     DEBUG_PRINTLN("Configuring Bluetooth...");
     btSerial.begin(57600);
-    
+
     // have a look at the documenation (the pdf)
     // for info on what the commands do.
 
     if (!sendATCommand("AT"))
         return false; // Test communication
-    
+
     if (!sendATCommand("AT+IMME1"))
         return false; // Test communication
-    
+
     if (!sendATCommand("AT+POWE3"))
         return false;
 
     if (!sendATCommand("AT+RESET"))
         return false; // Soft reset
-    
+
     if (!sendATCommand("AT+NAMENeoMatrix"))
         return false; // Set device name
-    
+
     if (!sendATCommand("AT+BAUD3"))
         return false; // Set baud rate to 9600
-    
+
     if (!sendATCommand("AT+ROLE0"))
         return false; // Set to slave role
-    
+
     if (!sendATCommand("AT+START"))
         return false; // Set to slave role
-    
+
     return true;
 }
 
@@ -81,14 +81,14 @@ bool HM10::sendATCommand(const char *cmd)
 
     btSerial.print(cmd);
 
-    // if you want to see more of the HM-10-Response, 
+    // if you want to see more of the HM-10-Response,
     // increase the array size.
     char response[3];
     int idx = 0;
 
     unsigned long start = millis();
 
-    // some commands take a full second till the HM10 answers. 
+    // some commands take a full second till the HM10 answers.
     // give it plenty of time
     while (millis() - start < 1000)
     {
@@ -150,6 +150,18 @@ String HM10::get_received()
     inputBuffer.trim();
 
     return inputBuffer;
+}
+
+uint8_t HM10::get_received(char *buffer, uint8_t size)
+{
+    uint8_t idx = 0;
+    while (btSerial.available() && idx < size)
+    {
+        char c = btSerial.read();
+
+        buffer[idx++] = c;
+    }
+    return idx;
 }
 
 #endif

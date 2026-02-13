@@ -20,6 +20,7 @@ class HM10: public BLEInterface {
     virtual bool sendWhenReady(const void* data, uint16_t len) override;
     virtual bool available() override;
     virtual String get_received() override;
+    virtual uint8_t get_received(char *buffer, uint8_t size) override;
 
 
 

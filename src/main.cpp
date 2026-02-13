@@ -8,7 +8,7 @@
 // #include "state_machine.cpp"
 
 #define DEBUG 0
-#if DEBUG 
+#if DEBUG
 #define DEBUG_PRINTLN(x) Serial.println(x)
 #define DEBUG_PRINT(x) Serial.print(x)
 #define DEBUG_BEGIN(x) Serial.begin(x)
@@ -32,12 +32,14 @@ Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(
     NEO_GRB + NEO_KHZ800);
 
 // Message list
-#define MAX_MESSAGES 10
-String messages[MAX_MESSAGES] = {
-    "Hello World!",
+#define MAX_MESSAGES 5
+#define MAX_MESSAGE_SIZE 32
+char messages[MAX_MESSAGES][MAX_MESSAGE_SIZE] = {
+    "Hello world!",
     "NeoMatrix!",
     "Nano Rocks!"};
-int numMessages = 3;
+
+uint8_t numMessages = 3;
 
 uint16_t colors[] = {
     matrix.Color(255, 0, 0),
@@ -55,7 +57,6 @@ struct Pixel
 {
   uint8_t x;
   uint8_t y;
-  uint8_t z;
   uint8_t r;
   uint8_t g;
   uint8_t b;
@@ -77,142 +78,158 @@ FONT_MODES font_mode = SMALL;
 
 MATRIX_MODES matrix_mode = MESSAGES;
 
-// Process Bluetooth command
-void processCommand(String cmd)
+void clearMatrix()
 {
-  String debug_msg = "Received command: " + cmd;
-  DEBUG_PRINTLN(debug_msg);
-  cmd.trim();
-  String msg = "";
+  DEBUG_PRINTLN("clear");
+  matrix.clear();
+  matrix.show();
+  matrix_mode = IDLE;
+}
 
-  if (cmd.startsWith("p:"))
+void rainbow(char *cmd, uint8_t size)
+{
+
+  /**
+   * Packet format should be in csv format:
+   * p:x,y,r,g,b
+   */
+  DEBUG_PRINT("Pixel: ");
+
+  if (size < 6)
   {
-
-    /**
-     * Packet format should be in csv format:
-     * p:x,y,z,r,g,b
-     */
-    DEBUG_PRINTLN("p");
-
-    matrix_mode = PIXEL;
-
-    Pixel p;
-
-    DEBUG_PRINTLN(cmd);
-
-    cmd = cmd.substring(2, cmd.length());
-    DEBUG_PRINTLN(cmd);
-
-    p.x = (uint8_t)cmd.substring(0, cmd.indexOf(",")).toInt();
-    cmd = cmd.substring(cmd.indexOf(",") + 1);
-    DEBUG_PRINTLN(cmd);
-
-    p.y = (uint8_t)cmd.substring(0, cmd.indexOf(",")).toInt();
-    cmd = cmd.substring(cmd.indexOf(",") + 1);
-    DEBUG_PRINTLN(cmd);
-
-    p.z = (uint8_t)cmd.substring(0, cmd.indexOf(",")).toInt();
-    cmd = cmd.substring(cmd.indexOf(",") + 1);
-    DEBUG_PRINTLN(cmd);
-
-    p.r = (uint8_t)cmd.substring(0, cmd.indexOf(",")).toInt();
-    cmd = cmd.substring(cmd.indexOf(",") + 1);
-    DEBUG_PRINTLN(cmd);
-
-    p.g = (uint8_t)cmd.substring(0, cmd.indexOf(",")).toInt();
-    cmd = cmd.substring(cmd.indexOf(",") + 1);
-    DEBUG_PRINTLN(cmd);
-
-    p.b = (uint8_t)cmd.substring(0, cmd.indexOf(",")).toInt();
-    cmd = cmd.substring(cmd.indexOf(",") + 1);
-    DEBUG_PRINTLN(cmd);
-
-    DEBUG_PRINTLN("assambled:");
-    DEBUG_PRINT(p.x);
-    DEBUG_PRINT(",");
-    DEBUG_PRINT(p.y);
-    DEBUG_PRINT(",");
-    DEBUG_PRINT(p.r);
-    DEBUG_PRINT(",");
-    DEBUG_PRINT(p.g);
-    DEBUG_PRINT(",");
-    DEBUG_PRINT(p.b);
-    DEBUG_PRINT(",");
-
-    matrix.drawPixel(p.x, p.y, matrix.Color(p.r, p.g, p.b));
-    matrix.show();
-    msg = "Pixel";
+    // triggers if the packet is too small
+    DEBUG_PRINT("false sized pixel_packet: ");
+    DEBUG_PRINTLN(size);
+    return;
   }
-  else if (cmd.startsWith("CLEAR"))
-  {
 
-    DEBUG_PRINTLN("clear");
-    matrix.clear();
-    matrix.show();
-    matrix_mode = IDLE;
-  }
-  else if (cmd.startsWith("ADD:"))
-  {
-    DEBUG_PRINTLN("add");
-    if (numMessages < MAX_MESSAGES)
-    {
-      messages[numMessages] = cmd.substring(4);
-      numMessages++;
-      msg = "Added!";
-    }
-    else
-    {
-      msg = "Message list full!";
-    }
-    matrix_mode = MESSAGES;
-  }
-  else if (cmd.startsWith("DEL:"))
-  {
-    DEBUG_PRINTLN("del");
-    int idx = cmd.substring(4).toInt();
-    if (idx >= 0 && idx < numMessages)
-    {
-      for (int i = idx; i < numMessages - 1; i++)
-      {
-        messages[i] = messages[i + 1];
-      }
-      numMessages--;
-      msg = "Deleted!";
-    }
-    else
-    {
-      msg = "Invalid index!";
-    }
-    matrix_mode = MESSAGES;
-  }
-  else if (cmd.equalsIgnoreCase("LIST"))
-  {
-    DEBUG_PRINTLN("list");
-    msg = "Messages:";
-    for (int i = 0; i < numMessages; i++)
-    {
+  matrix_mode = PIXEL;
 
-      msg = msg + i + ": " + messages[i];
-    }
-  }
-  else if (cmd.startsWith("FONT_SMALL"))
+  Pixel p;
+
+  p.x = (int16_t)cmd[1];
+
+  p.y = (int16_t)cmd[2];
+
+  p.r = (uint8_t)cmd[3];
+
+  p.g = (uint8_t)cmd[4];
+
+  p.b = (uint8_t)cmd[5];
+
+  DEBUG_PRINT(p.x);
+  DEBUG_PRINT(",");
+  DEBUG_PRINT(p.y);
+  DEBUG_PRINT(",");
+  DEBUG_PRINT(p.r);
+  DEBUG_PRINT(",");
+  DEBUG_PRINT(p.g);
+  DEBUG_PRINT(",");
+  DEBUG_PRINT(p.b);
+  DEBUG_PRINTLN();
+
+  matrix.drawPixel(p.x, p.y, matrix.Color(p.r, p.g, p.b));
+  matrix.show();
+}
+
+void add(char *cmd, uint8_t size)
+{
+  DEBUG_PRINTLN("add");
+
+  if (numMessages >= MAX_MESSAGES)
   {
+    DEBUG_PRINTLN("Max messages reached");
+    return;
+  }
+
+  // cmd[0] is the command '2', skip it
+  uint8_t copySize = size - 1;
+  if (copySize > (MAX_MESSAGE_SIZE - 1))
+    copySize = MAX_MESSAGE_SIZE - 1;
+
+  strncpy(messages[numMessages], cmd + 1, copySize);
+  messages[numMessages][copySize] = '\0';
+  numMessages++;
+
+  matrix_mode = MESSAGES;
+}
+
+void del_msg(char *cmd, uint8_t size)
+{
+  DEBUG_PRINTLN("del");
+  int idx = (uint8_t)cmd[1] - '0'; // ascii 0 to integer 0
+
+  if (idx > 0 || idx >= numMessages){
+    DEBUG_PRINT("Invalid Del Index: "); DEBUG_PRINTLN(idx);
+    return;
+  }
+
+  for (uint8_t i = idx; i < numMessages - 1; i++)
+  {
+    strncpy(messages[i], messages[i + 1], MAX_MESSAGE_SIZE);
+  }
+
+  numMessages--;
+  matrix_mode = MESSAGES;
+}
+
+void change_font(char *cmd, uint8_t size)
+{
+  switch (cmd[1])
+  {
+  case '1':
     DEBUG_PRINTLN("f_small");
     matrix.setFont(&TomThumb);
     font_mode = SMALL;
-  }
-  else if (cmd.startsWith("FONT_BIG"))
-  {
-    DEBUG_PRINTLN("f_big");
+    break;
+
+  case '2':
     matrix.setFont(nullptr);
     font_mode = BIG;
-  }
-  else
-  {
-    msg = "Unkown command.";
-  }
+    break;
 
-  ble_driver->sendDataPacket(msg.c_str(), sizeof(msg.c_str()));
+  default:
+    break;
+  }
+}
+
+char oki[] = "oki";
+// Process Bluetooth command
+void processCommand(char *cmd, uint8_t size)
+{
+  // String debug_msg = "Received command: " + cmd;
+  // DEBUG_PRINTLN(debug_msg);
+  // cmd.trim();
+
+  switch ((uint8_t)cmd[0])
+  {
+  case '0':
+    clearMatrix();
+    break;
+
+  case '1':
+    rainbow(cmd, size);
+
+    ble_driver->sendDataPacket(oki, sizeof(oki));
+    break;
+
+  case '2':
+    add(cmd, size);
+    ble_driver->sendDataPacket(oki, sizeof(oki));
+    break;
+  case '3':
+    del_msg(cmd, size);
+    ble_driver->sendDataPacket(oki, sizeof(oki));
+    break;
+
+  case '4':
+    change_font(cmd, size);
+    ble_driver->sendDataPacket(oki, sizeof(oki));
+    break;
+
+  default:
+    break;
+  }
 }
 
 // Update the matrix display
@@ -225,29 +242,38 @@ void updateDisplay()
     scrollTimer = now;
 
     matrix.fillScreen(0);
-    int16_t textWidth = 0;
-    switch (font_mode)
-    {
-    case BIG:
-      matrix.setCursor(scrollX, 0);                      // Bottom alignment for TomThumb
-      textWidth = messages[currentMessage].length() * 6; // TomThumb is ~4px per char
-      break;
-    case SMALL:
-      matrix.setCursor(scrollX, matrix.height() - 1);    // Bottom alignment for TomThumb
-      textWidth = messages[currentMessage].length() * 4; // TomThumb is ~4px per char
-      break;
-    default:
-      matrix.setCursor(scrollX, matrix.height() - 1);    // Bottom alignment for TomThumb
-      textWidth = messages[currentMessage].length() * 4; // TomThumb is ~4px per char
-      break;
+
+    int16_t x1, y1;
+    uint16_t textWidth, h;
+    matrix.getTextBounds(messages[currentMessage], 0, 0, &x1, &y1, &textWidth, &h);
+
+    // 2. Determine vertical alignment based on font type
+    int16_t cursorY = 0;
+    
+    switch (font_mode) {
+      case SMALL:
+        // TomThumb draws UP from the baseline. 
+        // For an 8px high matrix, y=6 puts the text nicely at the bottom.
+        cursorY = 6; 
+        break;
+        
+      case BIG:
+        // Default font draws DOWN from top-left.
+        // y=0 puts it at the top.
+        // y=1 centers it slightly better on an 8px high matrix.
+        cursorY = 0; 
+        break;
     }
+
+    // 3. Set the cursor using the calculated Y and current scroll X
+    matrix.setCursor(scrollX, cursorY); 
 
     matrix.print(messages[currentMessage]);
     matrix.show();
 
     scrollX--;
 
-    if (scrollX < -textWidth)
+    if (scrollX + (int16_t)textWidth < 0)
     {
       scrollX = matrix.width();
       currentMessage++;
@@ -260,12 +286,81 @@ void updateDisplay()
   }
 }
 
+void stripBrackets(char *msg, uint8_t &length)
+{
+  if (length < 2)
+    return; // too short to have brackets
+  if (msg[0] == '<' && msg[length - 1] == '>')
+  {
+    // Shift string left by 1 to remove '<'
+    for (uint8_t i = 0; i < length - 2; i++)
+    {
+      msg[i] = msg[i + 1];
+    }
+    // Null terminate after removing '>'
+    msg[length - 2] = '\0';
+    length -= 2; // new length of the string
+  }
+}
+
+/**
+ * valid packets should look like this:
+ * <programm_code(1byte)data>;
+ */
+boolean validPacket(char *buffer, uint8_t size)
+{
+  if (!buffer)
+    return false;
+
+  if (buffer[0] != '<')
+    return false;
+
+  // skip the first byte since we validated it.
+  for (uint8_t i = 1; i < size; i++)
+  {
+    if (buffer[i] == '>')
+      return true;
+
+    if (buffer[i] == '\0')
+      break;
+  }
+
+  return false;
+}
+
+#define RX_BUFFER_SIZE 32
+char rxBuffer[RX_BUFFER_SIZE];
+uint8_t rxIndex = 0;
+
+void handleIncomingByte(char b)
+{
+  if (rxIndex == 0 && b != '<')
+  {
+    // ignore bytes until we get a '<'
+    return;
+  }
+
+  if (rxIndex >= RX_BUFFER_SIZE)
+  {
+    // buffer full, reset
+    rxIndex = 0;
+    return;
+  }
+
+  rxBuffer[rxIndex++] = b;
+
+  if (b == '>')
+  {
+    // complete packet received
+    stripBrackets(rxBuffer, rxIndex);
+    processCommand(rxBuffer, rxIndex);
+    rxIndex = 0; // ready for next packet
+  }
+}
+
 void setup()
 {
   DEBUG_BEGIN(115200);
-  // while (!Serial)
-  // {
-  // }
 
   DEBUG_PRINTLN("Starting setup ...");
 
@@ -298,44 +393,48 @@ void setup()
   matrix.show();
 }
 
-String msg = "";
 unsigned long last_ping = 0;
 constexpr unsigned long wait_time = 3 * 60 * 1000;
+unsigned long time_delta = 0;
 void loop()
 {
   if (ble_driver->connected())
   {
     if (ble_driver->available())
     {
-      msg = msg + ble_driver->get_received();
-      DEBUG_PRINTLN(msg);
-      msg.trim();
+      char buffer[64];
+      uint8_t received = ble_driver->get_received(buffer, sizeof(buffer));
 
-      if (msg.length() > 0 && msg.endsWith(">"))
+      for (uint8_t i = 0; i < received; i++)
       {
-        msg = msg.substring(1, msg.length() - 1);
-        DEBUG_PRINT("aaa: ");
-        DEBUG_PRINTLN(msg);
-        processCommand(msg);
-
-        msg = "";
+        handleIncomingByte(buffer[i]);
       }
-
       last_ping = millis();
     }
   }
 
   if ((millis() - last_ping) > wait_time)
   {
-    if (matrix_mode != IDLE){
-      String clear = "CLEAR";
-      processCommand(clear);
-    }else {
+    if (matrix_mode != IDLE)
+    {
+      char clear[] = "<0>";
+      processCommand(clear + 1, 1);
+      matrix_mode = IDLE;
+      DEBUG_PRINTLN("IDLING");
+    }
+    else
+    {
       delay(1000);
     }
   }
   else
   {
+    if ((millis() - time_delta) > 1000)
+    {
+      DEBUG_PRINT("ping: ");
+      DEBUG_PRINTLN(millis() - last_ping);
+      time_delta = millis();
+    }
     updateDisplay();
   }
 }

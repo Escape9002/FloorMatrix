@@ -13,6 +13,7 @@ public:
     virtual bool sendWhenReady(const void* data, uint16_t len) = 0;
     virtual bool available() = 0;
     virtual String get_received() = 0;
+    virtual uint8_t get_received(char *buffer, uint8_t size) = 0;
 };
 
 #endif // BLE_INTERFACE_H
