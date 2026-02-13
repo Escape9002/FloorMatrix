@@ -51,7 +51,7 @@ uint16_t colors[] = {
 int currentMessage = 0;
 int16_t scrollX = 0;
 uint32_t scrollTimer = 0;
-const uint16_t scrollSpeed = 50; // ms per scroll step
+const uint16_t scrollSpeed = 66; // ms per scroll step
 
 struct Pixel
 {
