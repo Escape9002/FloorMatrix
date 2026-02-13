@@ -26,22 +26,24 @@ async def main(args):
     async with BleakClient(device.address) as client:
         print(f"🔗 Connected to {device.address}")
 
-        if args.mode == "rainbow":
-            # This mode uses the efficient binary protocol for animations
-            await stream_rainbow(client, CHAR_UUID)
-        elif args.mode == "time":
-            # This mode uses the text-based command protocol for messages
-            while True:
-                await send_time(client, CHAR_UUID)
-                await asyncio.sleep(20)
-                await send_kindness(client, CHAR_UUID)    
+        while True:
+            if args.mode == "rainbow":
+                # This mode uses the efficient binary protocol for animations
+                await stream_rainbow(client, CHAR_UUID)
+            elif args.mode == "time":
+                # This mode uses the text-based command protocol for messages
+                while True:
+                    await send_time(client, CHAR_UUID)
+                    await asyncio.sleep(20)
+                    await send_kindness(client, CHAR_UUID)    
+                    await asyncio.sleep(35)
+            elif args.mode == "clear":
+                await send_clear(client, CHAR_UUID)
                 await asyncio.sleep(35)
-        elif args.mode == "clear":
-            await send_clear(client, CHAR_UUID)
-            await asyncio.sleep(35)
 
-        elif args.mode == "kind":
-            await send_kindness(client, CHAR_UUID)
+            elif args.mode == "kind":
+                await send_kindness(client, CHAR_UUID)
+                await asyncio.sleep(20)
 
 def main_entry():
     # Set up command-line argument parsing
@@ -53,14 +55,14 @@ def main_entry():
     )
     args = parser.parse_args()
 
-    while True:
-        try:
-            asyncio.run(main(args))
-        except KeyboardInterrupt:
-            print("\n👋 Exiting.\n Type stop to truly stop!")
-        except Exception as e:
-            print(f"An error occurred: {type(e)}, {e}")
-            print("To continue like nothing happened, press enter")
+    
+    try:
+        asyncio.run(main(args))
+    except KeyboardInterrupt:
+        print("\n👋 Exiting.\n Type stop to truly stop!")
+    except Exception as e:
+        print(f"An error occurred: {type(e)}, {e}")
+        print("To continue like nothing happened, press enter")
 
 if __name__ == "__main__":
     main_entry()

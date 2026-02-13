@@ -2,37 +2,23 @@ from bleak import BleakClient
 from datetime import datetime
 import asyncio
 
-async def send_time(client: BleakClient, CHAR_UUID : str):
-    """
-    Formats the current local time and sends it as a single message command.
-    """
+async def send_time(client: BleakClient, CHAR_UUID: str):
     print("🕒 Getting current time...")
     now = datetime.now()
-    time_str = now.strftime("%H:%M")  # Format as HH:MM
+    time_str = now.strftime("%H:%M")  # HH:MM
 
-    # Construct the message according to the protocol in your C++ code.
-    # The command is "ADD:<text>", and the packet is wrapped in "<>".
-    message = f"<ADD:{time_str}>"
-    
-    print(f"✉️  Sending message: {message}")
-    
+    # Clear old message slots first
+    for idx in range(4):
+        del_packet = f"<30>"
+        await client.write_gatt_char(CHAR_UUID, del_packet.encode(), response=True)
+        await asyncio.sleep(0.01)
 
-    
-    for i in range(5):
-        await client.write_gatt_char(CHAR_UUID, "<DEL:0>".encode(), response=True)
-        await asyncio.sleep(0.02)  # 20 ms
-        await client.write_gatt_char(CHAR_UUID, "<DEL:1>".encode(), response=True)
-        await asyncio.sleep(0.02)  # 20 ms
-        await client.write_gatt_char(CHAR_UUID, "<DEL:2>".encode(), response=True)
-        await asyncio.sleep(0.02)  # 20 ms
-        await client.write_gatt_char(CHAR_UUID, "<FONT_BIG>".encode(), response=True)
-        await asyncio.sleep(0.02)  # 20 ms
+    await client.write_gatt_char(CHAR_UUID, "<42>".encode(), response=True)
+    # Send new time message
+    message = f"<2{time_str}>"
+    print(f"✉️ Sending message: {message}")
+    await client.write_gatt_char(CHAR_UUID, message.encode(), response=True)
+    await asyncio.sleep(0.01)
 
-    
-
-    # Use "Write with Response" for commands to ensure they are processed.
-    for i in range(5):
-        await client.write_gatt_char(CHAR_UUID, message.encode(), response=True)
-        await asyncio.sleep(0.02)  # 20 ms
     
     print("✅ Time message sent successfully.")

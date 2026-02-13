@@ -31,9 +31,9 @@ async def stream_rainbow(client: BleakClient, CHAR_UUID : str):
                 for x in range(32):
                     r, g, b = rainbow_matrix[y][x]
                     
-                    msg: str = f"<p:{x},{y},{0},{r},{g},{b}>"
-                    
-                    await client.write_gatt_char(CHAR_UUID, msg.encode())
+                    packet = bytearray([ord('<'), ord('1'), x, y, r, g, b, ord('>')])
+                    await client.write_gatt_char(CHAR_UUID, packet)
+
             
             await asyncio.sleep(0.016)  # ~60 FPS
     except Exception as e:
