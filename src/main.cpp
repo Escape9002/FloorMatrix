@@ -129,7 +129,6 @@ void rainbow(char *cmd, uint8_t size)
   DEBUG_PRINTLN();
 
   matrix.drawPixel(p.x, p.y, matrix.Color(p.r, p.g, p.b));
-  matrix.show();
 }
 
 void add(char *cmd, uint8_t size)
@@ -159,8 +158,10 @@ void del_msg(char *cmd, uint8_t size)
   DEBUG_PRINTLN("del");
   int idx = (uint8_t)cmd[1] - '0'; // ascii 0 to integer 0
 
-  if (idx > 0 || idx >= numMessages){
-    DEBUG_PRINT("Invalid Del Index: "); DEBUG_PRINTLN(idx);
+  if (idx > 0 || idx >= numMessages)
+  {
+    DEBUG_PRINT("Invalid Del Index: ");
+    DEBUG_PRINTLN(idx);
     return;
   }
 
@@ -205,12 +206,12 @@ void processCommand(char *cmd, uint8_t size)
   {
   case '0':
     clearMatrix();
+    ble_driver->sendDataPacket(oki, sizeof(oki));
     break;
 
   case '1':
     rainbow(cmd, size);
 
-    ble_driver->sendDataPacket(oki, sizeof(oki));
     break;
 
   case '2':
@@ -232,6 +233,8 @@ void processCommand(char *cmd, uint8_t size)
   }
 }
 
+unsigned long last_frame = 0;
+unsigned long fpms = 10;
 // Update the matrix display
 void updateDisplay()
 {
@@ -249,24 +252,25 @@ void updateDisplay()
 
     // 2. Determine vertical alignment based on font type
     int16_t cursorY = 0;
-    
-    switch (font_mode) {
-      case SMALL:
-        // TomThumb draws UP from the baseline. 
-        // For an 8px high matrix, y=6 puts the text nicely at the bottom.
-        cursorY = 6; 
-        break;
-        
-      case BIG:
-        // Default font draws DOWN from top-left.
-        // y=0 puts it at the top.
-        // y=1 centers it slightly better on an 8px high matrix.
-        cursorY = 0; 
-        break;
+
+    switch (font_mode)
+    {
+    case SMALL:
+      // TomThumb draws UP from the baseline.
+      // For an 8px high matrix, y=6 puts the text nicely at the bottom.
+      cursorY = 6;
+      break;
+
+    case BIG:
+      // Default font draws DOWN from top-left.
+      // y=0 puts it at the top.
+      // y=1 centers it slightly better on an 8px high matrix.
+      cursorY = 0;
+      break;
     }
 
     // 3. Set the cursor using the calculated Y and current scroll X
-    matrix.setCursor(scrollX, cursorY); 
+    matrix.setCursor(scrollX, cursorY);
 
     matrix.print(messages[currentMessage]);
     matrix.show();
@@ -283,6 +287,11 @@ void updateDisplay()
       }
       matrix.setTextColor(colors[random(0, 5)]);
     }
+  }
+  else if (matrix_mode != MESSAGES && ((millis() - last_frame) > fpms))
+  {
+    matrix.show();
+    last_frame = millis();
   }
 }
 
@@ -391,11 +400,10 @@ void setup()
   delay(500);
   matrix.clear();
   matrix.show();
-  
 }
 
 unsigned long last_ping = 0;
-constexpr unsigned long wait_time =(unsigned long) 3 * (unsigned long)60 * (unsigned long)1000;
+constexpr unsigned long wait_time = (unsigned long)3 * (unsigned long)60 * (unsigned long)1000;
 unsigned long time_delta = 0;
 void loop()
 {
@@ -413,9 +421,9 @@ void loop()
       last_ping = millis();
     }
   }
-  DEBUG_PRINT(wait_time - (millis()-last_ping));
+  DEBUG_PRINT(wait_time - (millis() - last_ping));
   DEBUG_PRINT("\t");
-  DEBUG_PRINTLN(wait_time );
+  DEBUG_PRINTLN(wait_time);
   if ((millis() - last_ping) > wait_time)
   {
     if (matrix_mode != IDLE)

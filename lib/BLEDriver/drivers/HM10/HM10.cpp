@@ -11,12 +11,11 @@
 
 #include "HM10.h"
 #include <Arduino.h>
-#include "SoftwareSerial.h"
+// #include <AltSoftSerial.h>
 
 ////////////////////////////////////// MOVE TO .h if possible
-#define BT_RX 7
-#define BT_TX 8
-SoftwareSerial btSerial(BT_RX, BT_TX); // SoftwareSerial for Bluetooth
+// AltSoftSerial btSerial;
+#define btSerial Serial
 //////////////////////////////////////
 
 // --- Static Member Initialization ---
@@ -42,7 +41,7 @@ bool HM10::begin()
     _instance = this; // Set the instance pointer for static callbacks
 
     DEBUG_PRINTLN("Configuring Bluetooth...");
-    btSerial.begin(57600);
+    btSerial.begin(115200);
 
     // have a look at the documenation (the pdf)
     // for info on what the commands do.
@@ -62,11 +61,24 @@ bool HM10::begin()
     if (!sendATCommand("AT+NAMENeoMatrix"))
         return false; // Set device name
 
-    if (!sendATCommand("AT+BAUD3"))
+    if (!sendATCommand("AT+BAUD4"))
         return false; // Set baud rate to 9600
 
     if (!sendATCommand("AT+ROLE0"))
         return false; // Set to slave role
+
+    if (!sendATCommand("AT+COMA0"))
+        return false; // Set to slave role
+    
+    if (!sendATCommand("AT+COMI0"))
+        return false; // Set to slave role
+    
+    if (!sendATCommand("AT+GAIN1"))
+        return false; // Set to slave role
+
+    if (!sendATCommand("AT+PCTL1"))
+        return false; // Set to slave role
+
 
     if (!sendATCommand("AT+START"))
         return false; // Set to slave role

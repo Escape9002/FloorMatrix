@@ -27,8 +27,8 @@ async def stream_rainbow(client: BleakClient, CHAR_UUID : str):
     try:
         while True:
             rainbow_matrix = generate_rainbow_matrix(32, 8)
-            for y in range(8):
-                for x in range(32):
+            for x in range(32):
+                for y in range(8):
                     r, g, b = rainbow_matrix[y][x]
                     
                     packet = bytearray([ord('<'), ord('1'), x, y, r, g, b, ord('>')])
