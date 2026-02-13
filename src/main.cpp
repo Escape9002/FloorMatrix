@@ -101,25 +101,27 @@ void rainbow(char *cmd, uint8_t size)
   }
 
   matrix_mode = PIXEL;
+  for (int i = 1; i < size; i+=3)
+  {
+    if (i + 2 >= size) break; 
 
-  Pixel p;
+    uint8_t index = (uint8_t)cmd[i];
+    // Convert linear index to x,y for the matrix
+    uint8_t x = index % 32;
+    uint8_t y = index / 32;
 
-  p.index = (uint8_t)cmd[1];
-   // Convert linear index to x,y for the matrix
-  uint8_t x = p.index % 32;
-  uint8_t y = p.index / 32;
+    uint8_t high = (uint8_t)cmd[i+1];
+    uint8_t low = (uint8_t)cmd[i+2];
 
-  uint8_t high = (uint8_t)cmd[2];
-  uint8_t low  = (uint8_t)cmd[3];
-  
-  uint16_t color = ((uint16_t)high << 8) | low;
+    uint16_t color = ((uint16_t)high << 8) | low;
 
-  DEBUG_PRINT(p.index);
-  DEBUG_PRINT(",");
-  DEBUG_PRINT(p.color);
-  DEBUG_PRINTLN();
+    DEBUG_PRINT(index);
+    DEBUG_PRINT(",");
+    DEBUG_PRINT(color);
+    DEBUG_PRINTLN();
 
-  matrix.drawPixel(x, y, color);
+    matrix.drawPixel(x, y, color);
+  }
 }
 
 void add(char *cmd, uint8_t size)
@@ -352,9 +354,9 @@ void handleIncomingByte(char b)
   if (b == '>')
   {
     // complete packet received
-    stripBrackets(rxBuffer, rxIndex);
-    DEBUG_PRINTLN(rxBuffer);
-    processCommand(rxBuffer, rxIndex);
+    // stripBrackets(rxBuffer, rxIndex);
+    // DEBUG_PRINTLN(rxBuffer);
+    processCommand(rxBuffer + 1, rxIndex - 2);
     rxIndex = 0; // ready for next packet
   }
 }
@@ -413,7 +415,7 @@ void loop()
       last_ping = millis();
     }
   }
-  
+
   if ((millis() - last_ping) > wait_time)
   {
     if (matrix_mode != IDLE)
