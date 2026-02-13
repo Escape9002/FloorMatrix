@@ -55,11 +55,8 @@ const uint16_t scrollSpeed = 50; // ms per scroll step
 
 struct Pixel
 {
-  uint8_t x;
-  uint8_t y;
-  uint8_t r;
-  uint8_t g;
-  uint8_t b;
+  uint8_t index;
+  uint16_t color;
 };
 
 enum MATRIX_MODES
@@ -95,7 +92,7 @@ void rainbow(char *cmd, uint8_t size)
    */
   DEBUG_PRINT("Pixel: ");
 
-  if (size < 6)
+  if (size < 4)
   {
     // triggers if the packet is too small
     DEBUG_PRINT("false sized pixel_packet: ");
@@ -107,28 +104,22 @@ void rainbow(char *cmd, uint8_t size)
 
   Pixel p;
 
-  p.x = (int16_t)cmd[1];
+  p.index = (uint8_t)cmd[1];
+   // Convert linear index to x,y for the matrix
+  uint8_t x = p.index % 32;
+  uint8_t y = p.index / 32;
 
-  p.y = (int16_t)cmd[2];
+  uint8_t high = (uint8_t)cmd[2];
+  uint8_t low  = (uint8_t)cmd[3];
+  
+  uint16_t color = ((uint16_t)high << 8) | low;
 
-  p.r = (uint8_t)cmd[3];
-
-  p.g = (uint8_t)cmd[4];
-
-  p.b = (uint8_t)cmd[5];
-
-  DEBUG_PRINT(p.x);
+  DEBUG_PRINT(p.index);
   DEBUG_PRINT(",");
-  DEBUG_PRINT(p.y);
-  DEBUG_PRINT(",");
-  DEBUG_PRINT(p.r);
-  DEBUG_PRINT(",");
-  DEBUG_PRINT(p.g);
-  DEBUG_PRINT(",");
-  DEBUG_PRINT(p.b);
+  DEBUG_PRINT(p.color);
   DEBUG_PRINTLN();
 
-  matrix.drawPixel(p.x, p.y, matrix.Color(p.r, p.g, p.b));
+  matrix.drawPixel(x, y, color);
 }
 
 void add(char *cmd, uint8_t size)
@@ -234,7 +225,7 @@ void processCommand(char *cmd, uint8_t size)
 }
 
 unsigned long last_frame = 0;
-unsigned long fpms = 10;
+unsigned long fpms = 33;
 // Update the matrix display
 void updateDisplay()
 {
@@ -362,6 +353,7 @@ void handleIncomingByte(char b)
   {
     // complete packet received
     stripBrackets(rxBuffer, rxIndex);
+    DEBUG_PRINTLN(rxBuffer);
     processCommand(rxBuffer, rxIndex);
     rxIndex = 0; // ready for next packet
   }
@@ -421,9 +413,7 @@ void loop()
       last_ping = millis();
     }
   }
-  DEBUG_PRINT(wait_time - (millis() - last_ping));
-  DEBUG_PRINT("\t");
-  DEBUG_PRINTLN(wait_time);
+  
   if ((millis() - last_ping) > wait_time)
   {
     if (matrix_mode != IDLE)
