@@ -1,0 +1,24 @@
+{
+	"nodes":[
+		{"id":"aaa11808eb02629a","x":105,"y":460,"width":1150,"height":555,"color":"2","type":"group","label":"HAL"},
+		{"id":"9b1246850b82b36f","x":-20,"y":-340,"width":790,"height":460,"color":"4","type":"group","label":"Application"},
+		{"id":"79ef79681b9fc836","x":480,"y":-820,"width":400,"height":400,"color":"5","type":"group","label":"View"},
+		{"id":"2fba557f98661e28","type":"text","text":"# Application\nhandle Mode switches and general programm behaviour.\n\n1. gather data()\n2. run tick()\n3. run render()\n4. deploy to display","x":500,"y":-220,"width":250,"height":280},
+		{"id":"05d622537f4459a4","type":"text","text":"# Modes\n- Temperature\n- Weather\n- Time\n- Pixelflut\n- Cstm Msgs\n\nModes implement:\n- needed Data\n- tick() : updates state\n- render(&mut frame) : returns frame with new stuff to show","x":0,"y":-320,"width":250,"height":420},
+		{"id":"8ea41a2c10e9079b","type":"text","text":"# WiFi\n- ESP32C3","x":690,"y":830,"width":250,"height":115},
+		{"id":"76b2b2541b495833","type":"text","text":"# BLE\n- Arduino Nano 33 BLE\n- ESP32C3","x":985,"y":830,"width":250,"height":165},
+		{"id":"8b1f9e7f05299be4","type":"text","text":"# Data Layer\nImplement interfaces for the different data-sources\n","x":480,"y":360,"width":250,"height":160},
+		{"id":"71b17e3b92783e41","type":"text","text":"# Sensors\n- Temperature: \n- Brightness: \n- Sound: ","x":125,"y":700,"width":250,"height":188},
+		{"id":"5a9c33c3bd22fa3f","type":"text","text":"# Connectivity\nThings that need connectivity from outside:\n- Weather\n- Time\n- Messages","x":860,"y":520,"width":250,"height":240},
+		{"id":"d20203c9cca008d6","type":"text","text":"# Render\ntakes frame from render and pushes it to display (eg LED Matrix :3 )","x":500,"y":-715,"width":250,"height":160}
+	],
+	"edges":[
+		{"id":"5e397758099c715f","fromNode":"76b2b2541b495833","fromSide":"top","toNode":"5a9c33c3bd22fa3f","toSide":"bottom"},
+		{"id":"c9fd0943d2b414fd","fromNode":"8ea41a2c10e9079b","fromSide":"top","toNode":"5a9c33c3bd22fa3f","toSide":"bottom"},
+		{"id":"f4c92da1bfe7ef56","fromNode":"2fba557f98661e28","fromSide":"left","toNode":"05d622537f4459a4","toSide":"right"},
+		{"id":"ff06d279b6380b0e","fromNode":"05d622537f4459a4","fromSide":"right","toNode":"8b1f9e7f05299be4","toSide":"left"},
+		{"id":"48ac5997fa092388","fromNode":"8b1f9e7f05299be4","fromSide":"bottom","toNode":"71b17e3b92783e41","toSide":"top"},
+		{"id":"bc45aaf2bdc071fb","fromNode":"8b1f9e7f05299be4","fromSide":"bottom","toNode":"5a9c33c3bd22fa3f","toSide":"top"},
+		{"id":"8c55f3e10cbf1f06","fromNode":"2fba557f98661e28","fromSide":"top","toNode":"d20203c9cca008d6","toSide":"bottom"}
+	]
+}
