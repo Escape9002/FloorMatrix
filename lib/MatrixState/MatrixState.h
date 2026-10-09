@@ -1,21 +1,12 @@
+#include "states/TimeState.h"
+#include "HAL.h"
+#include "LightEngine.h"
+
 #include <cstdint>
-enum MATRIX_STATE
+enum MATRIX_STATE : uint8_t
 {
     OFF,
     TIME
-};
-
-enum BLE_TYPE
-{
-    TIME,
-    STATE,
-    MESSAGE
-};
-
-struct BLE_INPUT
-{
-    BLE_TYPE type;
-    char msg[16];
 };
 
 class MatrixState
@@ -26,6 +17,8 @@ protected:
     LightEngine &light_engine;
     MATRIX_STATE state;
     uint8_t wanted_brightness;
+
+    TimeState time_state;
 
     // LED Matrix used in the evening, thus AVG_ROOM_LUX is
     // ~ 500 lux and the Matrix should be calibrated against that.
@@ -85,48 +78,18 @@ private:
     }
 
 public:
-    MatrixState(HAL &hal, LightEngine &light_engine) : HAL(hal), LightEngine(light_engine)
+    MatrixState(HAL &hal, LightEngine &light_engine) : hal(hal), light_engine(light_engine), state(MATRIX_STATE::TIME), wanted_brightness(20)
     {
-        state = MATRIX_STATE::ON;
-        wanted_brightness = 100;
-
-        timeState = TimeState();
     }
 
     /**
      * @brief call the current states tick() function.
      *
      */
-    void tick(uint32_t dt_ms)
+    void tick(uint16_t sound, uint16_t lux, uint32_t dt_ms)
     {
 
-
-
-        switch (state)
-        {
-        case MATRIX_STATE::OFF:
-            light_engine.off();
-            break;
-        case MATRIX_STATE::TIME:
-            char text[] = time_state.tick(dt_ms);
-            light_engine.show(text);
-
-        default:
-            break;
-        }
-
-        light_engine.setBrightness(wanted_brightness);
-    }
-
-    /**
-     * @brief evaluate all inputs and go to the next state if necessary.
-     *
-     */
-    void render(uint16_t sound, BLE_INPUT ble_input, uint16_t lux)
-    {
         bool clapped = clap_detect(sound);
-
-        uint8_t brightness = brightness_input(lux);
 
         if (clapped)
         {
@@ -142,23 +105,31 @@ public:
 
         wanted_brightness = brightness_input(lux);
 
-        switch (ble_input.type)
-        {
-        case BLE_TYPE::TIME:
-            // extract the time from the char array
-            // the time will be formated as "xx:xx", 
-            // but there are more chars in the array then these 5.
-            // cut the array to the uniform size.
-            char time = get_time_str(ble_input.msg);
 
-            // extract the time in ms from the given uniform char array.
-            unsigned long time_ms = get_time_ms(time);
-            timeState.setTime(time_ms);
+        time_state.tick(dt_ms);
+    }
+
+    /**
+     * @brief 
+     *
+     */
+    void render()
+    {
+
+        switch (state)
+        {
+        case MATRIX_STATE::OFF:
+            light_engine.off();
             break;
 
-        default:
-            // do nothing with the others for now
+        case MATRIX_STATE::TIME:
+            const char *time_text = time_state.get_time_str();
+            light_engine.setText(time_text);
             break;
         }
+        
+        light_engine.setBrightness(wanted_brightness);
+        light_engine.show();
+    
     }
 };
