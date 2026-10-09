@@ -30,7 +30,9 @@ protected:
     // https://www.geo.de/wissen/forschung-und-technik/physik-des-klatschens--jeder-mensch-erzeugt-einen-einzigartigen-klang-35777172.html
     // loudest clapping is around 85dB, 60-70 dB is talking/loud music.
     // so we go with 75, dB is a exponential scale!
-    static constexpr uint16_t CLAP_DB = 75;
+    static constexpr uint16_t CLAP_DB = 80;
+
+    uint32_t clap_cooldown_ms = 0;
 
 private:
     // The States of the Matrix should not depend on anything.
@@ -89,28 +91,29 @@ public:
     void tick(uint16_t sound, uint16_t lux, uint32_t dt_ms)
     {
 
-        bool clapped = clap_detect(sound);
-
-        if (clapped)
+        if (clap_cooldown_ms > 0)
         {
-            if (state == MATRIX_STATE::TIME)
-            {
-                state = MATRIX_STATE::OFF;
-            }
+            if (dt_ms >= clap_cooldown_ms)
+                clap_cooldown_ms = 0;
             else
-            {
-                state = MATRIX_STATE::TIME;
-            }
+                clap_cooldown_ms -= dt_ms;
+        }
+
+        // Toggle state only if above threshold and cooldown has expired
+        if (clap_cooldown_ms == 0 && sound > CLAP_DB)
+        {
+            clap_cooldown_ms = 600; // Ignore further sound spikes for 600ms
+
+            state = (state == MATRIX_STATE::TIME) ? MATRIX_STATE::OFF : MATRIX_STATE::TIME;
         }
 
         wanted_brightness = brightness_input(lux);
-
 
         time_state.tick(dt_ms);
     }
 
     /**
-     * @brief 
+     * @brief
      *
      */
     void render()
@@ -127,9 +130,13 @@ public:
             light_engine.setText(time_text);
             break;
         }
-        
+
         light_engine.setBrightness(wanted_brightness);
         light_engine.show();
-    
+    }
+
+    MATRIX_STATE get_state()
+    {
+        return state;
     }
 };

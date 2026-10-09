@@ -10,7 +10,7 @@ class NeoMatrixEngine : public LightEngine
 private:
 
     Adafruit_NeoMatrix &matrix;
-
+  
 public:
     NeoMatrixEngine(Adafruit_NeoMatrix &matrix) : matrix(matrix)
     {
@@ -18,15 +18,26 @@ public:
 
     void off() override
     {
-        matrix.clear();
+        
+        matrix.fillScreen(0);
         
     }
 
     void setBrightness(uint8_t brightness) override {
+        // remove this safeguard if the powersupply can keep up again.
+        // only temporary :)
+        if(brightness > 5) {
+            brightness  = 5;
+        }
         matrix.setBrightness(brightness);
     }
 
     void setText(const char* msg) override {
+        matrix.setCursor(0, 0); 
         matrix.print(msg);
+    }
+
+    void show() override {
+        matrix.show();
     }
 };
