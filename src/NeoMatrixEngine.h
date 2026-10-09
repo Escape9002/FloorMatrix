@@ -33,6 +33,7 @@ public:
     }
 
     void setText(const char* msg) override {
+        matrix.clear();
         matrix.setCursor(0, 0); 
         matrix.print(msg);
     }
@@ -40,4 +41,6 @@ public:
     void show() override {
         matrix.show();
     }
+
+    
 };

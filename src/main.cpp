@@ -33,6 +33,11 @@ LightSensor light_sensor = LightSensor();
 // ------------------------------------ Microphone
 #include "SoundSensor.h"
 SoundSensor microphone = SoundSensor();
+
+// ------------------------------------ TempHumSensor
+#include "TempHumSensor.h"
+TempHumSensor temp_hum_sensor = TempHumSensor();
+
 //--------------------------------------------------------
 // STATE MACHINE
 //--------------------------------------------------------
@@ -61,12 +66,18 @@ void setup()
   microphone.begin();
 
   light_sensor.begin();
+
+  temp_hum_sensor.begin();
 }
 
 uint32_t last_tick_time = 0;
 uint32_t last_frame_time = 0;
-constexpr uint32_t FRAME_INTERVAL_MS = 100; // ~30 FPS
+uint32_t last_temp_read_time = 0;
 
+constexpr uint32_t FRAME_INTERVAL_MS = 100; // ~30 FPS
+constexpr uint32_t TEMP_INTERVAL_MS  = 2000; // Read I2C sensor once every 2 seconds
+float cached_temp = 20.0f;
+float cached_hum = 50.0f;
 void loop()
 {
   uint32_t now = millis();
@@ -76,6 +87,12 @@ void loop()
   uint16_t dB = microphone.read_decibels();
   uint16_t brightness = light_sensor.read_lux();
 
+    if (now - last_temp_read_time >= TEMP_INTERVAL_MS)
+    {
+        last_temp_read_time = now;
+        cached_temp = temp_hum_sensor.get_temp();
+        cached_hum = temp_hum_sensor.get_hum();
+    }
   // if (dB > 75){
   //   delay(500); // manual debounce
   // }
@@ -87,7 +104,7 @@ void loop()
   Serial.println(brightness);
   
   
-  matrix_state_engine.tick(dB, brightness, dt);
+  matrix_state_engine.tick(dB, brightness, dt, cached_temp, cached_hum);
 
   // 2. Refresh display at a stable, throttled rate
   if (now - last_frame_time >= FRAME_INTERVAL_MS)

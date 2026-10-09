@@ -3,10 +3,12 @@
 #include "LightEngine.h"
 
 #include <cstdint>
+#include "states/TemperatureState.h"
 enum MATRIX_STATE : uint8_t
 {
     OFF,
-    TIME
+    TIME,
+    TEMPHUM
 };
 
 class MatrixState
@@ -19,6 +21,7 @@ protected:
     uint8_t wanted_brightness;
 
     TimeState time_state;
+    TemperatureState temp_state;
 
     // LED Matrix used in the evening, thus AVG_ROOM_LUX is
     // ~ 500 lux and the Matrix should be calibrated against that.
@@ -30,7 +33,7 @@ protected:
     // https://www.geo.de/wissen/forschung-und-technik/physik-des-klatschens--jeder-mensch-erzeugt-einen-einzigartigen-klang-35777172.html
     // loudest clapping is around 85dB, 60-70 dB is talking/loud music.
     // so we go with 75, dB is a exponential scale!
-    static constexpr uint16_t CLAP_DB = 80;
+    static constexpr uint16_t CLAP_DB = 85;
 
     uint32_t clap_cooldown_ms = 0;
 
@@ -41,6 +44,7 @@ private:
     // TimeState requires the start-time to be set correctly.
     // It will be handed in via the BLE interface.
     TimeState timeState;
+    TemperatureState tempState;
 
     bool clap_detect(uint16_t dB)
     {
@@ -88,7 +92,7 @@ public:
      * @brief call the current states tick() function.
      *
      */
-    void tick(uint16_t sound, uint16_t lux, uint32_t dt_ms)
+    void tick(uint16_t sound, uint16_t lux, uint32_t dt_ms, float temp, float hum)
     {
 
         if (clap_cooldown_ms > 0)
@@ -104,12 +108,30 @@ public:
         {
             clap_cooldown_ms = 600; // Ignore further sound spikes for 600ms
 
-            state = (state == MATRIX_STATE::TIME) ? MATRIX_STATE::OFF : MATRIX_STATE::TIME;
+            switch (state)
+            {
+            case MATRIX_STATE::OFF:
+                
+                state = MATRIX_STATE::TIME;
+                break;
+            case MATRIX_STATE::TIME:
+                
+                state = MATRIX_STATE::TEMPHUM;
+                break;
+            case MATRIX_STATE::TEMPHUM:
+                
+                state = MATRIX_STATE::OFF;
+                break;
+            }
         }
 
         wanted_brightness = brightness_input(lux);
 
         time_state.tick(dt_ms);
+        temp_state.tick(dt_ms);
+
+        tempState.set_humidity(hum);
+        tempState.set_temperature(temp);
     }
 
     /**
@@ -126,9 +148,17 @@ public:
             break;
 
         case MATRIX_STATE::TIME:
+        {
             const char *time_text = time_state.get_time_str();
             light_engine.setText(time_text);
             break;
+        }
+        case MATRIX_STATE::TEMPHUM:
+        {
+            const char *temp_text = tempState.get_temp_hum_str();
+            light_engine.setText(temp_text);
+            break;
+        }
         }
 
         light_engine.setBrightness(wanted_brightness);
